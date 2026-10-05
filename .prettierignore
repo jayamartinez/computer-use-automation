@@ -1,0 +1,8 @@
+node_modules
+runs
+evidence
+docs
+package-lock.json
+AGENTS.md
+README.md
+REPORT.md
