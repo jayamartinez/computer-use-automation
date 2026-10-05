@@ -147,6 +147,26 @@
     {
       "label": "SSN",
       "where": "right_of"
+    },
+    {
+      "label": "Balance",
+      "where": "below"
+    },
+    {
+      "label": "Name",
+      "where": "below",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Inquiry Results"
+      }
+    },
+    {
+      "label": "Name",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Profile"
+      }
     }
   ]
 }

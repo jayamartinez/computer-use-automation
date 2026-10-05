@@ -224,4 +224,29 @@ describe("signatures and masking", () => {
     expect(dump).toContain("Savings");
     expect(dump).toContain("Account No");
   });
+
+  it("applies a mask rule only on the screen its `when` names", () => {
+    const profile = [
+      el("text", "Member Profile", 0, 0, 300),
+      el("text", "Name", 0, 40),
+      el("cell", "Marcus Oyelaran", 100, 40),
+      // The text inside the masked cell carries the value too.
+      el("text", "Marcus Oyelaran", 104, 42, 80, 15),
+      el("text", "Accounts", 0, 80),
+    ];
+    const rule = {
+      label: "Name",
+      where: "right_of" as const,
+      when: { scope: F, textPresent: "Member Profile" },
+    };
+    const onProfile = JSON.stringify(
+      maskObservation({ id: "o", fingerprint: "f", elements: profile }, [rule]),
+    );
+    expect(onProfile).not.toContain("Oyelaran");
+    expect(onProfile).toContain("Accounts");
+    const elsewhere = profile.filter((e) => e.text !== "Member Profile");
+    expect(
+      JSON.stringify(maskObservation({ id: "o", fingerprint: "f", elements: elsewhere }, [rule])),
+    ).toContain("Oyelaran");
+  });
 });

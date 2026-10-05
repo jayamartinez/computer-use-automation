@@ -354,7 +354,11 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
   "risk": { "safeControls": ["Search", "View", "Continue", "Acknowledge", "Member Inquiry", "Open Sub-Account"],
             "commitControls": ["Confirm"] },
   "formats": { "money": "$#,##0.00", "date": "MM/DD/YYYY" },
-  "masks": ["Account No", "SSN"]
+  "masks": [                     // values hidden in saved screenshots and observation dumps
+    { "label": "Account No", "where": "below" }, { "label": "SSN", "where": "right_of" },
+    { "label": "Balance", "where": "below" },
+    { "label": "Name", "where": "below",    "when": { "scope": ["workarea"], "textPresent": "Member Inquiry Results" } },
+    { "label": "Name", "where": "right_of", "when": { "scope": ["workarea"], "textPresent": "Member Profile" } } ]
 }
 
 // profiles/coreserv/tenants/lakeside.json

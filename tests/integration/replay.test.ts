@@ -136,7 +136,13 @@ describe("replay: lookup_balance against the real demo app", () => {
     // The profile screen was captured, with the account numbers masked out of the dump.
     const observation = readFileSync(result.failure.evidence!.observation, "utf8");
     expect(observation).toContain("Member Profile");
-    expect(observation).not.toMatch(/4000-10077/);
+    // Account numbers, balances and the member's name are masked; labels and types stay readable.
+    for (const sensitive of ["4000-10077", "15,902.66", "4,210.05", "Oyelaran", "Marcus"]) {
+      expect(observation).not.toContain(sensitive);
+    }
+    for (const kept of ["Account No", "Balance", "Savings", "Checking"]) {
+      expect(observation).toContain(kept);
+    }
   });
 
   it("refuses invalid input without opening a browser session on the app", async () => {

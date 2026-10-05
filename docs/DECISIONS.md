@@ -92,3 +92,9 @@ Short records of the decisions that shape this project. Each has the decision, t
 **Decision.** Targets, signatures, `requires`, the profile and tenant policy use `scope`: an ordered path of named containers that the surface defines. This replaced `frame` on 2026-10-05.
 **Why.** The artifact is meant to be surface-independent (PDF §3.7). The value was already a generic path; only the name was web vocabulary. A desktop surface maps the same field to window then pane, and a modern web page to `[]`, with no schema change. A typed union per surface kind was rejected, because it would put surface kinds into the artifact.
 **Cost.** A surface must produce stable container names. `PlaywrightSurface` uses frame names, so an unnamed iframe has no stable scope yet.
+
+## D16. Saved evidence masks names, account numbers and balances
+
+**Decision.** The profile's mask rules hide member names, account numbers and balances in every saved screenshot and observation dump. A rule names a visible label, the direction of its values (`below` a column header, `right_of` a form label), and optionally a `when` signature that limits it to one screen.
+**Why.** PDF §3.4 forbids persisting raw sensitive data. Evidence is copied into the repository, and even synthetic data should be handled the way real data would be. Without `when`, a label rule over-reaches: masking below "Name" on the profile also hides the Accounts table under it.
+**Cost.** Masks are geometric and hand-written per screen; a relabeled screen needs its rule updated. Member numbers stay visible in evidence (they are identifiers, shown last-two-digits in logs), so a reviewer can tell which run is which. The caller always receives unmasked outputs.

@@ -190,7 +190,9 @@ export function matchesSignature(observation: Observation, signature: Signature)
  */
 export function maskedElements(elements: ObservedElement[], rules: MaskRule[]): ObservedElement[] {
   const masked = new Set<ObservedElement>();
+  const screen: Observation = { id: "", fingerprint: "", elements };
   for (const rule of rules) {
+    if (rule.when && !matchesSignature(screen, rule.when)) continue;
     for (const label of textElements(elements, rule.label)) {
       const l = label.bounds;
       const peers = elements.filter(
@@ -213,8 +215,15 @@ const MASK = "[masked]";
 
 export function maskObservation(observation: Observation, rules: MaskRule[]): Observation {
   const masked = maskedElements(observation.elements, rules);
+  // The value is also the text of whatever sits inside a masked element, and part of the text
+  // of any element that wraps one, so both are hidden.
   const hides = (e: ObservedElement): boolean =>
-    masked.some((m) => m === e || (sameScope(m.scope, e.scope) && contains(e.bounds, m.bounds)));
+    masked.some(
+      (m) =>
+        m === e ||
+        (sameScope(m.scope, e.scope) &&
+          (contains(m.bounds, e.bounds) || contains(e.bounds, m.bounds))),
+    );
   return {
     ...observation,
     elements: observation.elements.map((e) =>

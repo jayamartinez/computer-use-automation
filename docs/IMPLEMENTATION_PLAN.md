@@ -208,7 +208,7 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 
 ## Known issues
 
-- **Open decision (PDF §3.4): names and balances are visible in failure screenshots and observation dumps.** The profile masks only Account No and SSN. Label-geometry masks over-reach: masking under "Name" on the profile also hides the Accounts table. Options: mask the targets the artifact extracts into sensitive outputs; add per-screen mask rules; or accept it for synthetic data and say so in the report.
+- Member numbers stay visible in saved evidence (D16). Logs show them as `***77`.
 - The scrub backstop replaces digit-only inputs anywhere in a log string, so it could alter a hash or run id that happens to contain one. Low probability; primary redaction does not depend on it.
 - The run-log scrub backstop ignores values shorter than four characters, to avoid mangling ordinary text. Primary redaction does not depend on it.
 - `profile.risk`, `profile.versionProbe` and the `version_mismatch` warning are validated data with no behaviour yet (M11, M8 drift signals).

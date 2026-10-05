@@ -37,7 +37,12 @@ export type Signature =
 
 // The values beneath this visible label (a column header) or beside it (a form label) are
 // sensitive.
-export type MaskRule = { label: string; where: "below" | "right_of" };
+export type MaskRule = {
+  label: string;
+  where: "below" | "right_of";
+  /** Applies only while this holds, so a label can be masked on the screen it was meant for. */
+  when?: Signature;
+};
 
 // The only way anything perceives or touches a UI. The recorded flow speaks in targets,
 // actions and signatures; how a surface perceives and acts is entirely behind this.

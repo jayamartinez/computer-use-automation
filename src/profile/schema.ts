@@ -59,7 +59,11 @@ export const ProfileSchema = z.strictObject({
   }),
   // Visible labels whose values are masked in screenshots and saved observations.
   masks: z.array(
-    z.strictObject({ label: z.string().min(1), where: z.enum(["below", "right_of"]) }),
+    z.strictObject({
+      label: z.string().min(1),
+      where: z.enum(["below", "right_of"]),
+      when: TextSignatureSchema.optional(),
+    }),
   ),
 });
 export type Profile = z.infer<typeof ProfileSchema>;
