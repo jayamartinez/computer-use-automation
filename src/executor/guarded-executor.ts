@@ -139,6 +139,16 @@ export class GuardedExecutor {
     return (await this.race([signature], timeoutMs)) !== undefined;
   }
 
+  /** Waits until a screen state no longer holds, such as an interstitial being dismissed. */
+  async waitForAbsence(signature: Signature, timeoutMs: number): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      if (!(await this.options.surface.matches(signature))) return true;
+      if (Date.now() >= deadline) return false;
+      await sleep(POLL_MS);
+    }
+  }
+
   /** Saves a masked screenshot and a masked element dump for a failure report. */
   async captureEvidence(name: string): Promise<{ screenshot: string; observation: string }> {
     const { surface, masks, runDir } = this.options;

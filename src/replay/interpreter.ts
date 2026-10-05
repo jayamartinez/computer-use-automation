@@ -238,6 +238,11 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
           `Condition ${condition.id} matched but its handler control was not found`,
         );
       }
+      // The old screen stays up until the next one loads, and racing before it is gone would
+      // match the same condition again and spend another recovery. A condition still there
+      // after a slow load's worth of time has come back (an identical page can follow), so it
+      // is left to the race, where it counts against maxAttempts.
+      await executor.waitForAbsence(condition.signature, profile.timeouts.slowLoadMs);
     }
     if (condition.resume === "continue") return { kind: "continue" };
     // Restarting repeats every step. That is only safe if none of them can have committed.

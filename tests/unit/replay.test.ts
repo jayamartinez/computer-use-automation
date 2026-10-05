@@ -253,6 +253,8 @@ describe("replay: profile conditions", () => {
   it("stops with recovery_exhausted when a condition keeps returning", async () => {
     const { result } = await run("10077", {
       app: { interrupts: { 2: "notice", 3: "notice", 4: "notice" } },
+      // An identical notice follows each one, so the engine waits this long before recounting.
+      profile: (p) => ({ ...p, timeouts: { slowLoadMs: 50 } }),
     });
     expect(result).toMatchObject({
       status: "failure",
