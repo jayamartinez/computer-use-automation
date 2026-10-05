@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# Per-run output; curated copies are committed under evidence/
+runs/
+
+# Playwright
+test-results/
+playwright-report/
+
+# The assignment PDF is not ours to republish
+docs/assignment.pdf
+
+.DS_Store
