@@ -71,7 +71,7 @@ Discovery and Replay both act only through:
 
 ### Surface abstraction
 
-`Surface` exposes `observe()`, `resolve(target)` (unique | ambiguous | none), `act()`, `matches(signature)`, `firstMatch(signatures)`, `screenshot()`. Every target and signature names a **scope**: an ordered path of named containers that the surface defines (frames of a frameset on legacy web, window then pane on desktop, empty for a single-document page). The recorded flow never uses web-only vocabulary. Implementations: `PlaywrightSurface` (primary, legacy web with framesets) and `FakeSurface` (in-memory, for tests; proves the seam). A modern-web variant is secondary scope. Desktop is stretch and should not be started.
+`Surface` exposes `observe()`, `resolve(target)` (unique | ambiguous | none), `act()`, `matches(signature)`, `firstMatch(signatures)`, `screenshot()`. Every target and signature names a **scope**: an ordered path of named containers that the surface defines (frames of a frameset on legacy web, window then pane on desktop, empty for a single-document page). The recorded flow never uses web-only vocabulary. Implementations: `PlaywrightSurface` (primary, legacy web with framesets) and `FakeSurface` (in-memory, for tests; proves the seam). A modern-web variant is one of the two stretch goals. Desktop is out of scope; the scope design argues for it in the report.
 
 ### Policy
 
@@ -154,9 +154,9 @@ runs/                         per-run output, gitignored
 
 **Core:** demo app; schemas; surface + Playwright + fake; guarded executor and policy; replay with outcomes, recoveries, failures, risk gate, unknown-outcome handling; handoff; discovery; compiler with verification replay; both capabilities discovered for real; the seven evidence scenarios; README and REPORT.
 
-**Secondary (only when core is solid, in order):** outcome probing in the compiler; capability catalog (`list` / `invoke`); modern-web CoreServ variant run as a second tenant with target overrides; unknown-outcome evidence scenario.
+**Secondary (only when core is solid, in order):** outcome probing in the compiler; unknown-outcome evidence scenario.
 
-**Stretch (probably never):** bounded single-step LLM-assisted fallback on replay failure (opt-in, policy-checked, never open-ended); approval workflow beyond the status field; multi-run stability; desktop surface. The PDF caps stretch goals at one or two.
+**Stretch (exactly two, chosen by the developer):** (1) approval gating: unattended replay runs only `approved` artifacts; (2) a modern-web CoreServ variant run as a second tenant with target overrides. Nothing else from PDF §8: no capability catalog, LLM-assisted fallback, multi-run stability, code generation or desktop surface.
 
 **Out of scope:** real bank systems or public sites, real credentials or PII, microservices, queues, databases, multi-tenant plumbing, a co-browsing operator console, multi-vendor LLM frameworks, CSS/XPath locators.
 

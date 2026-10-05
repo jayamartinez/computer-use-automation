@@ -75,9 +75,9 @@ Short records of the decisions that shape this project. Each has the decision, t
 **Why.** OpenRouter keeps the model swappable through configuration without a multi-vendor abstraction in the code. One key keeps setup simple for reviewers. The recorded provider answers the PDF's "how to run without live services".
 **Cost.** Discovery quality depends on the configured model supporting image input and tool calling.
 
-## D13. Modern web is secondary; desktop is stretch
+## D13. Modern web is a stretch goal; desktop is design only
 
-**Decision.** `FakeSurface` proves the surface seam in the core. A modern-web variant of CoreServ is secondary and, if built, runs as a second tenant with relabeled fields and a target-override file, so one piece of work demonstrates both surface robustness and cross-tenant reuse. Desktop is stretch.
+**Decision.** `FakeSurface` proves the surface seam in the core. A modern-web variant of CoreServ is one of the two stretch goals (the other is approval gating; chosen 2026-10-05). If built, it runs as a second tenant with relabeled fields and a target-override file, so one piece of work demonstrates both surface robustness and cross-tenant reuse. Desktop is not built.
 **Why.** The PDF asks for a credible design for heterogeneity and tenants, not an implementation. A second tenant variant answers §3.7 more directly than a second surface type alone.
 **Cost.** Desktop support is argued in the report, not demonstrated.
 
