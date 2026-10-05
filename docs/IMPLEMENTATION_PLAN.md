@@ -173,7 +173,10 @@ E7 needs a person at the keyboard; a short screen recording is welcome. Everythi
 Recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 and M6 partly). None changes a locked decision in `AGENTS.md`.
 
 1. **M3 was skipped for now.** The checkpoint needed only the read path, so the write path and fault injection were deferred. M3 must be finished before M8, which depends on the faults. It also unblocks the M5 latency test.
-2. **The assignment PDF was not available** (`docs/assignment.pdf` is gitignored and was not on the machine). Work was checked against the digest in `AGENTS.md` only. The PDF pass for these milestones is still owed.
+2. **The assignment PDF arrived after the code was written.** The pass against PDF §3, §6 and §7 was done afterwards (2026-10-05) and found no drift in what is built. Three things it sharpened for later milestones:
+   - §3.3 names "an unexpected dialog" as a runtime condition replay must handle, so native dialog reporting (outstanding from M5) is required, not optional.
+   - §11 requires a **public** GitHub repo at submission. The repo is private today.
+   - §8 lists "gate unattended replay on an approval state (draft → approved)" as a stretch goal. The core design already has that gate for irreversible steps, and the plan also counts the catalog and the second-tenant variant as stretch. The PDF caps stretch at one or two, so decide which to keep before starting the secondary list.
 3. **`table_cell` is resolved geometrically from visible text**, not from DOM table structure, and all three locator kinds are resolved by one pure function over the observation (`src/surface/resolve.ts`). Both surfaces share it. This follows `docs/DESIGN.md` §3 and makes the desktop argument concrete; the cost is that a column is found by horizontal overlap with its header text.
 4. **`right_of` and `below` mean the nearest control in that direction.** A tie is ambiguous. "Exactly one or fail" still holds; nothing is narrowed by document order.
 5. **Accessible names in observations are simplified** (aria-label, then `<label>`, then the element's own content). Roles come from Playwright's ARIA implementation.
