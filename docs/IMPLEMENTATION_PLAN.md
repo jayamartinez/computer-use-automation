@@ -66,6 +66,8 @@ Data read by several components: app profile, tenant binding.
 ### M3. Demo app, write path and faults — `feat(app): sub-account flow, supervisor override, fault injection`
 - [ ] Sub-Account Form, Review, Confirmation; insufficient-funds rule; supervisor override above $2,500; System Notice, Session Expired, Application Error; fault endpoint including `commitThen500`.
 
+**Partly done.** System Notice, Session Expired and Application Error are built from the approved mockups (artboards 7 to 9), along with the `notice`, `expireSession`, `error500` and `latencyMs` faults. Still to do: the sub-account screens, the insufficient-funds rule, Supervisor Override, `commitThen500`, and a screen with a native dialog for M5. Each new screen needs a mockup approved first.
+
 **Done when:** every screen and branch in `docs/DESIGN.md` §1–2 is reachable by hand, and each fault can be switched on and observed.
 
 ### M4. Schemas — `feat(schema): artifact, profile, tenant binding and result contract`
@@ -95,14 +97,14 @@ Data read by several components: app profile, tenant binding.
 **Done when:** `replay coreserv.member.lookup_balance --input memberId=10077` returns `success` with the correct balance, and `memberId=10042` returns that member's balance from the same artifact. No model code is importable from `src/replay/`.
 
 ### M8. Replay, exceptional states — `feat(replay): outcomes, recoveries and failure evidence`
-- [ ] State race; outcome signatures; profile conditions with dispositions and bounded recovery; failure evidence.
+- [x] State race; outcome signatures; profile conditions with dispositions and bounded recovery; failure evidence.
 
-**Partly done (2026-10-05).** The replay side is complete: the state race, every disposition, bounded recovery, restart after re-login, the condition check on an unresolved target, `slow_load`, and failure evidence. Tested on `FakeSurface` for every condition. Against the real app: both business outcomes, `target_unresolved`, `locator_fallback` and `latencyMs`. The `notice`, `sessionTtl` and `error500` criteria need those screens in the demo app (M3). Their Paper mockups (artboards 7 to 9 on the "CoreServ screens" page) are waiting for approval.
+**Done (2026-10-05).** Every criterion below passes against the real app (`tests/integration/replay.test.ts`), and every condition is also covered on `FakeSurface`.
 
 **Done when**, against the real app:
 - 99999 returns `business_outcome: MEMBER_NOT_FOUND`; 10200 returns `PERMISSION_DENIED`.
 - With `notice` on, the run succeeds and reports one recovery.
-- With a short `sessionTtl`, the run re-logs in, restarts and succeeds.
+- With `expireSession` armed (replacing the planned `sessionTtl`), the run re-logs in, restarts and succeeds.
 - With `latencyMs` set, the run succeeds with a `slow_load` warning.
 - With `error500`, the run returns `failure: app_error` with step, expected, observed and a masked screenshot.
 - With a target's label changed in a test copy, the run returns `target_unresolved`, or succeeds with `locator_fallback` when a second strategy exists.
@@ -192,7 +194,7 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
    - `contentHash` excludes `status`, so approving an artifact does not change the hash of what was approved.
    - A money output is `{ amount: "15902.66", currency: "USD" }`.
 8. **`result.json` on disk has outputs masked by sensitivity.** The caller (and the CLI's stdout) gets the real values. Evidence must hold no unmasked sensitive value, and this file is copied into `evidence/` later.
-9. **M8 was started before M3 was finished**, at the developer's request. Only the `latencyMs` fault and `/__admin/faults` were added ahead of M3, because they show no screen. Every other fault waits for its screen's mockup to be approved.
+9. **M8 was done before M3 was finished**, at the developer's request. The parts of M3 that M8 needs were built first: three interruption screens from approved mockups, and their faults.
 10. **M8 design choices:**
    - **State race order:** profile conditions, then the step's outcomes, then its expected state, all checked against one observation. `Surface` gained `firstMatch(signatures)` for this; separate `matches` calls would compare different moments of the screen.
    - **Profile conditions are a union by disposition.** `session_expired` recovers by clicking "Sign in again" and then `restart_if_no_side_effects`, which signs in through the profile and starts from step 1. The design's `handler: "login"` could not work: after expiry the nav frame still shows "Member Inquiry", so the authenticated check passes and login is skipped. `maxAttempts` defaults to 2. The profile gained `timeouts.slowLoadMs` (3000).
@@ -200,6 +202,8 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
    - **A `fail` condition returns `app_error`.** When a target cannot be resolved, replay first checks the profile conditions, so an error page reads as `app_error`, not drift.
    - **`safeToRetry` means retrying cannot duplicate a side effect *and* might succeed.** It is false for `invalid_input`, `policy_denied`, `target_unresolved`, `target_ambiguous` and `extraction_invalid`. The table is in `src/outcome/result.ts`.
    - **`observed` on `unexpected_state` lists the states that were checked**, never screen content.
+   - After a handler click, replay waits up to `slowLoadMs` for the condition to clear before waiting for the step's state again. Otherwise the old notice, still on screen while the next page loads, is matched again. A condition that is still there is counted as a repeat. The real-app notice test found this; the fake surface changes state instantly.
+   - **Faults are armed on a screen and fire once** (`{"notice": "search"}`), instead of the planned time-based `sessionTtl`. Every scenario then reproduces exactly.
    - A step's `retry` budget applies only to failures from the step itself (unresolved, ambiguous, unexpected state, extraction). A disposition's decision is final.
 
 ## Known issues

@@ -42,11 +42,13 @@ Operator `teller01`. Its password and the supervisor override code come from the
 
 | Fault | Effect |
 |---|---|
-| `notice` | The next workarea request shows the System Notice interstitial; Acknowledge continues to the requested page |
-| `sessionTtl` | Session expires after N seconds; the workarea shows Session Expired |
+| `notice` | Armed on a workarea screen: the next request for it shows the System Notice; Acknowledge continues to that screen with the same form data |
+| `expireSession` | Armed on a workarea screen: the next request for it ends the session and shows Session Expired. Every later request shows it until the operator uses "Sign in again", which opens the sign-in page in the whole window |
 | `latencyMs` | Adds delay to every response |
-| `error500` | The next matching request returns the Application Error page |
+| `error500` | Armed on a workarea screen: the next request for it returns the Application Error page (HTTP 500) |
 | `commitThen500` | Confirm commits the sub-account, then returns the Application Error page |
+
+Screen faults fire once, on the screen they are armed for (`main_menu`, `inquiry`, `search`, `profile`), so every scenario reproduces exactly. Example: `POST /__admin/faults {"notice": "search"}`; `null` disarms. A clock-based session TTL was rejected because the re-login pass would expire again at a different step on each run.
 
 ## 2. Workflows
 
@@ -228,7 +230,7 @@ Per step:
 |---|---|---|
 | Step's `expect` | continue | next step |
 | Outcome signature | outcome | return `business_outcome` |
-| `system_notice` | recover | acknowledge, re-wait for `expect` |
+| `system_notice` | recover | acknowledge, wait for the notice to clear (up to `slowLoadMs`), re-wait for `expect` |
 | `session_expired` | recover | click "Sign in again", re-login and restart from step 1, only if no irreversible step was dispatched; otherwise `outcome_unknown` |
 | Slow load | (none) | waiting is built in; past a soft threshold adds a `slow_load` warning |
 | `supervisor_override` | escalate | takeover request; with no operator channel, `failure: escalation_timeout` |

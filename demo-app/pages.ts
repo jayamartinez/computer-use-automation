@@ -21,11 +21,11 @@ ${body}
 </body></html>`;
 }
 
-function workarea(heading: string, content: string): string {
+function workarea(heading: string, content: string, titleColor = "#000080"): string {
   return page(
     heading,
     `<table width="100%" border="0" cellpadding="4" cellspacing="0">
-<tr><td bgcolor="#000080"><font ${FONT} color="#FFFFFF"><b>${esc(heading)}</b></font></td></tr>
+<tr><td bgcolor="${titleColor}"><font ${FONT} color="#FFFFFF"><b>${esc(heading)}</b></font></td></tr>
 <tr><td>${content}</td></tr>
 </table>`,
   );
@@ -179,4 +179,43 @@ ${accounts}
 
 export function messagePage(heading: string, message: string): string {
   return workarea(heading, `<font ${FONT}>${esc(message)}</font>`);
+}
+
+// Interruptions, shown in the workarea instead of the screen that was requested.
+
+export function noticePage(acknowledge: string): string {
+  return workarea(
+    "System Notice",
+    `<form method="post" action="${acknowledge}">
+<table border="1" cellpadding="6" cellspacing="0" bgcolor="#FFFFE1" width="480">
+<tr><td>
+<font ${FONT}><b>Scheduled maintenance tonight</b></font><br><br>
+<font ${FONT}>Teller functions will be unavailable from 11:00 PM to 1:00 AM. Save your work before then.</font><br><br>
+<input type="submit" value="Acknowledge">
+</td></tr>
+</table>
+</form>`,
+  );
+}
+
+export function sessionExpiredPage(): string {
+  return workarea(
+    "Session Expired",
+    `<font ${FONT}>Your session has expired. Sign in again to continue.</font><br><br>
+<font ${FONT}><a href="/" target="_top">Sign in again</a></font>`,
+  );
+}
+
+export function applicationErrorPage(reference: string): string {
+  const label = (text: string) => `<td bgcolor="#D4D0C8"><font ${FONT}><b>${text}</b></font></td>`;
+  return workarea(
+    "Application Error",
+    `<font ${FONT}>An unexpected error occurred while processing your request.</font><br><br>
+<table border="1" cellpadding="3" cellspacing="0" width="480">
+<tr>${label("Error Code")}<td><font ${FONT}>CS-500</font></td></tr>
+<tr>${label("Reference")}<td><font ${FONT}>${esc(reference)}</font></td></tr>
+</table><br>
+<font ${FONT}>Contact the help desk if the problem persists. Use the menu on the left to continue.</font>`,
+    "#800000",
+  );
 }

@@ -43,7 +43,7 @@ async function withSearchStrategies(...strategies: Strategy[]): Promise<Artifact
   };
 }
 
-async function setFaults(faults: Record<string, number>): Promise<void> {
+async function setFaults(faults: Record<string, number | string | null>): Promise<void> {
   const response = await fetch(`${app.url}/__admin/faults`, {
     method: "POST",
     body: JSON.stringify(faults),
@@ -215,6 +215,76 @@ describe("replay: exceptional states against the real demo app", () => {
       expect(result.warnings.every((w) => w.kind === "slow_load")).toBe(true);
     } finally {
       await setFaults({ latencyMs: 0 });
+    }
+  });
+});
+
+describe("replay: profile conditions against the real demo app", () => {
+  const clearFaults = () =>
+    setFaults({ latencyMs: 0, notice: null, expireSession: null, error500: null });
+
+  it("acknowledges a system notice and reports one recovery", async () => {
+    await setFaults({ notice: "search" });
+    try {
+      const { result, log } = await run("10077");
+      expect(result).toMatchObject({
+        status: "success",
+        stepsCompleted: 5,
+        outputs: { savingsBalance: { amount: "15902.66", currency: "USD" } },
+        recoveries: [{ condition: "system_notice", atStep: "search", attempts: 1 }],
+      });
+      // The Search click was dispatched once; Acknowledge carried it through.
+      const actions = log.split("\n").filter((line) => line.includes('"event":"action"'));
+      expect(actions.filter((line) => line.includes('"stepId":"search"'))).toHaveLength(2);
+      expect(actions.some((line) => line.includes("system_notice.handler"))).toBe(true);
+    } finally {
+      await clearFaults();
+    }
+  });
+
+  it("signs in again after session expiry, restarts and succeeds", async () => {
+    await setFaults({ expireSession: "profile" });
+    try {
+      const { result, log } = await run("10077");
+      expect(result).toMatchObject({
+        status: "success",
+        stepsCompleted: 5,
+        outputs: { savingsBalance: { amount: "15902.66", currency: "USD" } },
+        recoveries: [{ condition: "session_expired", atStep: "open_member", attempts: 1 }],
+      });
+      expect(log).toContain('"event":"restart"');
+      expect(log).not.toContain(OPERATOR.password);
+    } finally {
+      await clearFaults();
+    }
+  });
+
+  it("fails with app_error, step, expected, observed and a masked screenshot", async () => {
+    await setFaults({ error500: "profile" });
+    try {
+      const { result } = await run("10077");
+      expect(result).toMatchObject({
+        status: "failure",
+        stepsCompleted: 3,
+        failure: {
+          category: "app_error",
+          stepId: "open_member",
+          intent: "Open the member's profile",
+          expected: "The application to process the request",
+          observed: "Condition app_error matched",
+          sideEffects: "none",
+          safeToRetry: true,
+        },
+      });
+      if (result.status !== "failure") throw new Error("unreachable");
+      expect(readFileSync(result.failure.evidence!.screenshot).subarray(1, 4).toString()).toBe(
+        "PNG",
+      );
+      expect(readFileSync(result.failure.evidence!.observation, "utf8")).toContain(
+        "Application Error",
+      );
+    } finally {
+      await clearFaults();
     }
   });
 });

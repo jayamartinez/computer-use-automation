@@ -99,13 +99,57 @@ describe("CoreServ demo app", () => {
     }
   });
 
+  it("fires each screen fault once, on the screen it was armed for", async () => {
+    const arm = (faults: object) =>
+      fetch(`${app.url}/__admin/faults`, { method: "POST", body: JSON.stringify(faults) });
+    const s = await signedIn();
+    const inquiryLink = () => s.get(s.nav).then(({ html }) => s.links(html)[1]!);
+
+    // Notice: shown instead of the search results; Acknowledge continues with the same form.
+    await arm({ notice: "search" });
+    const inquiry = await s.get(await inquiryLink());
+    expect(inquiry.html).toContain("Member Number");
+    const notice = await s.get(s.links(inquiry.html)[0]!, { f1: "10077", f2: "" });
+    expect(notice.html).toContain("System Notice");
+    expect(notice.html).toContain('value="Acknowledge"');
+    const continued = await s.get(s.links(notice.html)[0]!, {});
+    expect(continued.html).toContain("1 member(s) found");
+
+    // Application error: an HTTP 500 page, once.
+    await arm({ error500: "inquiry" });
+    const error = await s.get(await inquiryLink());
+    expect(error.status).toBe(500);
+    expect(error.html).toContain("Application Error");
+    expect((await s.get(await inquiryLink())).html).toContain("Member Number");
+
+    // Session expiry: every later request shows the expired page until the operator signs in.
+    await arm({ expireSession: "inquiry" });
+    const nav = s.nav;
+    const expired = await s.get(s.links((await s.get(nav)).html)[1]!);
+    expect(expired.html).toContain("Your session has expired");
+    expect(expired.html).toContain('href="/" target="_top">Sign in again');
+    expect((await s.get(nav)).html).toContain("Your session has expired");
+    const login = await s.get("/");
+    expect(login.html).toContain("Operator Sign In");
+    await s.get(s.links(login.html)[0]!, { f1: OPERATOR.operatorId, f2: OPERATOR.password });
+    expect((await s.get("/")).html).toContain('<frame name="workarea"');
+  });
+
   it("injects latency through the faults endpoint and validates what it is given", async () => {
     const faults = (body: string) => fetch(`${app.url}/__admin/faults`, { method: "POST", body });
     expect((await faults('{"latencyMs": 250}')).status).toBe(200);
     const started = Date.now();
     await fetch(`${app.url}/`);
     expect(Date.now() - started).toBeGreaterThanOrEqual(250);
-    for (const bad of ["nope", '{"latencyMs": -1}', '{"latencyMs": 1.5}', '{"other": 1}', "[]"]) {
+    for (const bad of [
+      "nope",
+      '{"latencyMs": -1}',
+      '{"latencyMs": 1.5}',
+      '{"other": 1}',
+      "[]",
+      '{"notice": "banner"}',
+      '{"error500": true}',
+    ]) {
       expect((await faults(bad)).status).toBe(400);
     }
     expect(await (await faults('{"latencyMs": 0}')).json()).toEqual({ latencyMs: 0 });
