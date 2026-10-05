@@ -54,7 +54,7 @@ Data read by several components: app profile, tenant binding.
 - [x] `AGENTS.md`, `docs/DESIGN.md`, `docs/DECISIONS.md`, this plan, repo skeleton, Paper diagrams.
 
 ### M1. Scaffold — `chore: scaffold TypeScript project`
-- [x] `package.json`, strict `tsconfig`, test runner, lint/format, Playwright with Chromium, npm scripts (`app`, `test`, `lint`, `typecheck`).
+- [x] `package.json`, strict `tsconfig`, test runner, lint/format, Playwright with Chromium, pnpm scripts (`app`, `test`, `lint`, `typecheck`).
 
 **Done when:** a clean clone installs, and `typecheck`, `lint` and an empty test run pass on macOS.
 
@@ -205,7 +205,7 @@ Recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 and M6 partly). No
 | Date | Milestone | Commit | Notes |
 |---|---|---|---|
 | 2026-10-05 | M0 | ca7133a | Design documents, diagrams and skeleton |
-| 2026-10-05 | M1 | 81aeeb9 | Scaffold: npm, tsx, Vitest, ESLint, Prettier, Playwright Chromium |
+| 2026-10-05 | M1 | 81aeeb9 | Scaffold: pnpm, tsx, Vitest, ESLint, Prettier, Playwright Chromium |
 | 2026-10-05 | M2 | e755b24 | CoreServ read path |
 | 2026-10-05 | M4 | 85e87e4 | Schemas, profile and binding data, hand-written `lookup_balance` fixture |
 | 2026-10-05 | M5 (partial) | acd90eb | Surface, PlaywrightSurface, FakeSurface; dialogs and latency test outstanding |

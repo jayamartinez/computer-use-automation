@@ -2,7 +2,7 @@ node_modules
 runs
 evidence
 docs
-package-lock.json
+pnpm-lock.yaml
 AGENTS.md
 README.md
 REPORT.md
