@@ -2,10 +2,10 @@
 
 import { z } from "zod";
 import { ActionTypeSchema, RiskSchema } from "../artifact/schema.ts";
-import { FramePathSchema, TargetSchema } from "../surface/target.ts";
+import { ScopePathSchema, TargetSchema } from "../surface/target.ts";
 
 const TextSignatureSchema = z.strictObject({
-  frame: FramePathSchema.optional(),
+  scope: ScopePathSchema.optional(),
   textPresent: z.string().min(1),
 });
 
@@ -41,8 +41,8 @@ export const ProfileSchema = z.strictObject({
   product: z.string(),
   versions: z.string(),
   surface: z.literal("web"),
-  frames: z.array(z.string()),
-  versionProbe: z.strictObject({ frame: FramePathSchema, pattern: z.string() }),
+  scopes: z.array(z.string()),
+  versionProbe: z.strictObject({ scope: ScopePathSchema, pattern: z.string() }),
   // Login belongs to the app, not to any capability. Values are `{{secrets.*}}` references.
   login: z.strictObject({
     steps: z.array(LoginStepSchema).min(1),
@@ -67,7 +67,7 @@ export type Profile = z.infer<typeof ProfileSchema>;
 const PolicySchema = z.strictObject({
   origins: z.array(z.url()).min(1),
   denyPaths: z.array(z.string()),
-  frames: z.array(z.string()),
+  scopes: z.array(z.string()),
   actions: z.array(ActionTypeSchema),
   maxRisk: RiskSchema,
 });

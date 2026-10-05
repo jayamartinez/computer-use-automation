@@ -184,7 +184,7 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 5. **Accessible names in observations are simplified** (aria-label, then `<label>`, then the element's own content). Roles come from Playwright's ARIA implementation.
 6. **Step schema has `click`, `fill` and `extract` only.** `select` and `assert` are in the policy vocabulary but are added to the step union in M9, with the capability that uses them, so no untested action exists.
 7. **Schema shapes that differ from the `DESIGN.md` examples:**
-   - Tenant `policy` has `frames` (required by `AGENTS.md`, missing from the example) and does not yet have `irreversible`; the executor always requires an approval for an irreversible action. M9 adds the field.
+   - Tenant `policy` has `scopes` (then `frames`; required by `AGENTS.md`, missing from the example) and does not yet have `irreversible`; the executor always requires an approval for an irreversible action. M9 adds the field.
    - Profile `masks` entries are `{ label, where: "below" | "right_of" }`. A bare label could not say whether the value sits under a column header or beside a form label, and guessing masked the neighbouring header.
    - Profile has no `formats`. Money is parsed as `$#,##0.00` in `src/replay/values.ts`; an uninterpreted format string would be a false promise.
    - Login values are `{{secrets.operatorId}}` and `{{secrets.password}}`, resolved from the tenant's `credentials` references.
@@ -205,14 +205,13 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 ## Known issues
 
 - **Open decision (PDF §3.4): names and balances are visible in failure screenshots and observation dumps.** The profile masks only Account No and SSN. Label-geometry masks over-reach: masking under "Name" on the profile also hides the Accounts table. Options: mask the targets the artifact extracts into sensitive outputs; add per-screen mask rules; or accept it for synthetic data and say so in the report.
-- **Open decision:** rename `frame` to `scope` (see the audit of 2026-10-05). It touches `AGENTS.md`'s locked policy wording.
 - **Open decision:** the path allowlist is a deny list (`denyPaths`). An exact `allowPaths` list would fail closed.
 - The scrub backstop replaces digit-only inputs anywhere in a log string, so it could alter a hash or run id that happens to contain one. Low probability; primary redaction does not depend on it.
 - The run-log scrub backstop ignores values shorter than four characters, to avoid mangling ordinary text. Primary redaction does not depend on it.
 - `profile.risk`, `profile.versionProbe` and the `version_mismatch` warning are validated data with no behaviour yet (M11, M8 drift signals).
 - Restarting after session expiry checks whether an irreversible step was dispatched, but no artifact can dispatch one until M9. That branch is untested until then.
 - An expected state that already holds before the action, on the old screen, would be matched at once. The fixture's expected states are all absent before their action. M9's artifact must keep that property, or the race needs a "screen changed" guard.
-- Each observation makes about a dozen round trips per frame. Fine locally (a full replay takes about one second); revisit if the latency fault makes polling slow.
+- Each observation makes about a dozen round trips per frame (scope). Fine locally (a full replay takes about one second); revisit if the latency fault makes polling slow.
 
 ## Spike findings
 

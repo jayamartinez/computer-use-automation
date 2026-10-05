@@ -32,14 +32,14 @@ export type FakeCoreServOptions = {
 };
 
 const at = (
-  frame: string[],
+  scope: string[],
   role: string,
   text: string,
   x: number,
   y: number,
   value?: string,
 ): FakeElement => ({
-  frame,
+  scope,
   role,
   name: text,
   text,
@@ -48,8 +48,8 @@ const at = (
 });
 
 const W = ["workarea"];
-const field = (frame: string[], x: number, y: number, value: string): FakeElement => ({
-  ...at(frame, "textbox", "", x, y, value),
+const field = (scope: string[], x: number, y: number, value: string): FakeElement => ({
+  ...at(scope, "textbox", "", x, y, value),
   name: "",
 });
 

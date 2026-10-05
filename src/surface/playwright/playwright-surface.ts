@@ -159,6 +159,7 @@ export class PlaywrightSurface implements Surface {
   private async observeFrame(
     frame: Frame,
   ): Promise<{ locator: Locator; element: Omit<ObservedElement, "ref"> }[]> {
+    // On this surface a scope is the path of frame names below the top document.
     const path: string[] = [];
     for (let f: Frame | null = frame; f?.parentFrame(); f = f.parentFrame()) path.unshift(f.name());
 
@@ -182,7 +183,7 @@ export class PlaywrightSurface implements Surface {
                 {
                   locator: group.all.nth(index),
                   element: {
-                    frame: path,
+                    scope: path,
                     role: group.role,
                     name: raw.name,
                     text: raw.text,

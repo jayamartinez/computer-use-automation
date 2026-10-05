@@ -3,10 +3,10 @@ import type { Target } from "./target.ts";
 export type Box = { x: number; y: number; width: number; height: number };
 
 // One perceived element. `role: "text"` is visible text with no interactive role; it is what
-// anchors and table headers are matched against. Bounds are local to the element's frame.
+// anchors and table headers are matched against. Bounds are local to the element's scope.
 export type ObservedElement = {
   ref: string;
-  frame: string[];
+  scope: string[];
   role: string;
   name: string;
   text: string;
@@ -28,7 +28,7 @@ export type SurfaceAction =
 
 // A content predicate over the current screen. Never URL-based.
 export type Signature =
-  | { textPresent: string; frame?: string[] }
+  | { textPresent: string; scope?: string[] }
   | { resolvable: Target }
   | { textEquals: { target: Target; value: string } }
   | { valueEquals: { target: Target; value: string } }

@@ -12,7 +12,7 @@ const blocked: string[] = [];
 
 const network = () => ({ origins: [app.url], denyPaths: ["/__admin/"] });
 const workarea = (role: string, ...strategies: Strategy[]): Target => ({
-  frame: ["workarea"],
+  scope: ["workarea"],
   role,
   strategies,
   rationale: "test",
@@ -66,15 +66,15 @@ afterAll(async () => {
 });
 
 describe("PlaywrightSurface against CoreServ", () => {
-  it("observes every frame of the frameset, with roles and frame paths", async () => {
+  it("observes every frame of the frameset as a scope, with roles", async () => {
     const { elements, fingerprint } = await surface.observe();
-    expect(new Set(elements.map((e) => e.frame.join("/")))).toEqual(
+    expect(new Set(elements.map((e) => e.scope.join("/")))).toEqual(
       new Set(["banner", "nav", "workarea"]),
     );
     expect(elements).toContainEqual(
-      expect.objectContaining({ frame: ["nav"], role: "link", name: "Member Inquiry" }),
+      expect.objectContaining({ scope: ["nav"], role: "link", name: "Member Inquiry" }),
     );
-    expect(elements.some((e) => e.frame[0] === "banner" && e.text.includes("CoreServ 7.2"))).toBe(
+    expect(elements.some((e) => e.scope[0] === "banner" && e.text.includes("CoreServ 7.2"))).toBe(
       true,
     );
     expect((await surface.observe()).fingerprint).toBe(fingerprint);
@@ -115,7 +115,7 @@ describe("PlaywrightSurface against CoreServ", () => {
       "Nguyen",
     );
     await act(targets.search_button!);
-    await until(() => surface.matches({ frame: ["workarea"], textPresent: "2 member(s) found" }));
+    await until(() => surface.matches({ scope: ["workarea"], textPresent: "2 member(s) found" }));
 
     expect(await surface.resolve(workarea("link", { kind: "role_name", name: "View" }))).toEqual({
       kind: "ambiguous",
@@ -130,8 +130,8 @@ describe("PlaywrightSurface against CoreServ", () => {
     expect(await kind(workarea("link", rowFor("10312")))).toBe("unique");
     expect(await kind(workarea("link", rowFor("10077")))).toBe("none");
     expect(await kind(workarea("button", { kind: "role_name", name: "Delete" }))).toBe("none");
-    // The right control in the wrong frame is not a match.
-    expect(await kind({ ...targets.search_button!, frame: ["nav"] })).toBe("none");
+    // The right control in the wrong scope is not a match.
+    expect(await kind({ ...targets.search_button!, scope: ["nav"] })).toBe("none");
   });
 
   it("refuses to act on a handle from an earlier observation", async () => {

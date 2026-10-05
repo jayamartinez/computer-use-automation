@@ -7,14 +7,14 @@ const F = ["workarea"];
 let n = 0;
 const el = (role: string, text: string, x: number, y: number, w = 90, h = 20): ObservedElement => ({
   ref: `e${++n}`,
-  frame: F,
+  scope: F,
   role,
   name: text,
   text,
   bounds: { x, y, width: w, height: h },
 });
 const target = (role: string, ...strategies: Strategy[]): Target => ({
-  frame: F,
+  scope: F,
   role,
   strategies,
   rationale: "test",
@@ -40,13 +40,13 @@ describe("role_name", () => {
     });
   });
 
-  it("reports no match, and ignores a match in another frame", () => {
+  it("reports no match, and ignores a match in another scope", () => {
     expect(resolveTarget(screen, target("button", { kind: "role_name", name: "Delete" }))).toEqual({
       kind: "none",
     });
     const elsewhere = {
       ...target("button", { kind: "role_name", name: "Search" }),
-      frame: ["nav"],
+      scope: ["nav"],
     };
     expect(resolveTarget(screen, elsewhere)).toEqual({ kind: "none" });
   });
@@ -206,11 +206,11 @@ describe("signatures and masking", () => {
     el("text", "Savings", 100, 70),
   ];
 
-  it("matches text within a frame and combines predicates", () => {
+  it("matches text within a scope and combines predicates", () => {
     const observation = { id: "o", fingerprint: "f", elements: screen };
-    const text = { frame: F, textPresent: "No members match" };
+    const text = { scope: F, textPresent: "No members match" };
     expect(matchesSignature(observation, text)).toBe(true);
-    expect(matchesSignature(observation, { ...text, frame: ["nav"] })).toBe(false);
+    expect(matchesSignature(observation, { ...text, scope: ["nav"] })).toBe(false);
     expect(matchesSignature(observation, { all: [text, { textPresent: "absent" }] })).toBe(false);
     expect(matchesSignature(observation, { any: [text, { textPresent: "absent" }] })).toBe(true);
   });

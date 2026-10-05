@@ -10,7 +10,7 @@
   "policy": {
     "origins": ["http://localhost:4070"],
     "denyPaths": ["/__admin/"],
-    "frames": ["banner", "nav", "workarea"],
+    "scopes": ["banner", "nav", "workarea"],
     "actions": ["click", "fill", "select", "extract", "assert"],
     "maxRisk": "irreversible"
   }

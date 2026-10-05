@@ -71,14 +71,14 @@ Discovery and Replay both act only through:
 
 ### Surface abstraction
 
-`Surface` exposes `observe()`, `resolve(target)` (unique | ambiguous | none), `act()`, `matches(signature)`, `screenshot()`. Implementations: `PlaywrightSurface` (primary, legacy web with framesets) and `FakeSurface` (in-memory, for tests; proves the seam). A modern-web variant is secondary scope. Desktop is stretch and should not be started.
+`Surface` exposes `observe()`, `resolve(target)` (unique | ambiguous | none), `act()`, `matches(signature)`, `firstMatch(signatures)`, `screenshot()`. Every target and signature names a **scope**: an ordered path of named containers that the surface defines (frames of a frameset on legacy web, window then pane on desktop, empty for a single-document page). The recorded flow never uses web-only vocabulary. Implementations: `PlaywrightSurface` (primary, legacy web with framesets) and `FakeSurface` (in-memory, for tests; proves the seam). A modern-web variant is secondary scope. Desktop is stretch and should not be started.
 
 ### Policy
 
-- Allowlist in the tenant binding: origins (also enforced at the network layer), frames, action types, maximum risk.
+- Allowlist in the tenant binding: origins and paths (both enforced at the network layer, fail-closed), scopes, action types, maximum risk.
 - Risk classes: `read`, `reversible`, `irreversible`. Profile lists safe and commit controls; an unknown button requires human approval during discovery.
 - Irreversible in discovery: always human approval. In replay: proceeds unattended only if the artifact is `approved` and the caller passes an explicit allow flag; otherwise an approval request is raised.
-- Artifacts declare `requires` (actions, max risk, frames) so policy can reject them before anything runs.
+- Artifacts declare `requires` (actions, max risk, scopes) so policy can reject them before anything runs.
 - Redaction: secrets never reach the model, trace, artifact or logs. Outputs are returned to the caller but logged masked by sensitivity. Sensitive regions are masked in screenshots. Human-typed values are never recorded.
 - Discovery sends screen content to a model provider, so it only ever runs against synthetic data.
 
@@ -103,7 +103,7 @@ One `controller` field (`automation` | `human` | `none`) plus an epoch that incr
 
 | Layer | Owns |
 |---|---|
-| App profile (per vendor product + version) | frames, login flow, global conditions and dispositions, risk rules, value formats, timeouts, screenshot masks |
+| App profile (per vendor product + version) | scopes, login flow, global conditions and dispositions, risk rules, value formats, timeouts, screenshot masks |
 | Capability artifact | contract (inputs, outputs, outcomes), named targets, steps, expects, checkpoint, `requires`, provenance |
 | Tenant binding | base URL, credential references, policy/allowlist, deployed version |
 | Tenant overrides (secondary) | patches to named targets, signatures, timeouts only; never steps or contract |
@@ -183,7 +183,7 @@ runs/                         per-run output, gitignored
 Test where judgment lives, not for coverage:
 
 - Schema validation and versioning rules.
-- Locator resolution (unique / ambiguous / none, anchor geometry, table cells, frames) against the demo app.
+- Locator resolution (unique / ambiguous / none, anchor geometry, table cells, scopes) against the demo app.
 - Replay taxonomy: each disposition produces the right result, using `FakeSurface` for speed and the real app for integration.
 - Policy decisions and the risk gate.
 - Handoff state machine transitions and epoch fencing, with a scripted human.

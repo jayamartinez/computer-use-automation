@@ -2,7 +2,7 @@
 // This schema is the single source of truth; types are derived from it.
 
 import { z } from "zod";
-import { FramePathSchema, TargetSchema } from "../surface/target.ts";
+import { ScopePathSchema, TargetSchema } from "../surface/target.ts";
 import { collectStrings, templateRefs } from "./template.ts";
 
 export const RiskSchema = z.enum(["read", "reversible", "irreversible"]);
@@ -45,7 +45,7 @@ export type OutputSpec = z.infer<typeof OutputSchema>;
 
 // Content predicates. Targets are referenced by name; values may be templated.
 export type ArtifactSignature =
-  | { textPresent: string; frame?: string[] }
+  | { textPresent: string; scope?: string[] }
   | { resolvable: string }
   | { cellEquals: { target: string; value: string } }
   | { all: ArtifactSignature[] }
@@ -53,7 +53,7 @@ export type ArtifactSignature =
 
 export const SignatureSchema: z.ZodType<ArtifactSignature> = z.lazy(() =>
   z.union([
-    z.strictObject({ textPresent: z.string().min(1), frame: FramePathSchema.optional() }),
+    z.strictObject({ textPresent: z.string().min(1), scope: ScopePathSchema.optional() }),
     z.strictObject({ resolvable: z.string() }),
     z.strictObject({ cellEquals: z.strictObject({ target: z.string(), value: z.string() }) }),
     z.strictObject({ all: z.array(SignatureSchema).min(1) }),
@@ -122,7 +122,7 @@ const ArtifactShape = z.strictObject({
   requires: z.strictObject({
     actions: z.array(ActionTypeSchema),
     maxRisk: RiskSchema,
-    frames: z.array(z.string()),
+    scopes: z.array(z.string()),
   }),
   provenance: z.strictObject({
     traceId: z.string().optional(),
@@ -223,9 +223,9 @@ function checkReferences(artifact: Shape, ctx: z.RefinementCtx): void {
     if (riskRank(step.risk) > riskRank(requires.maxRisk)) {
       issue(["requires", "maxRisk"], `Step "${step.id}" exceeds declared maxRisk`);
     }
-    for (const frame of artifact.targets[step.target]?.frame ?? []) {
-      if (!requires.frames.includes(frame)) {
-        issue(["steps", i, "target"], `Step "${step.id}" acts in undeclared frame "${frame}"`);
+    for (const scope of artifact.targets[step.target]?.scope ?? []) {
+      if (!requires.scopes.includes(scope)) {
+        issue(["steps", i, "target"], `Step "${step.id}" acts in undeclared scope "${scope}"`);
       }
     }
   });

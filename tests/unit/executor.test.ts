@@ -11,7 +11,7 @@ import { fakeElement } from "../support/fake-coreserv.ts";
 const policy: Policy = {
   origins: ["http://localhost:4070"],
   denyPaths: ["/__admin/"],
-  frames: ["workarea"],
+  scopes: ["workarea"],
   actions: ["click", "fill", "extract"],
   maxRisk: "irreversible",
 };
@@ -50,7 +50,7 @@ const click = (overrides: Partial<ActionRequest> = {}): ActionRequest => ({
   action: "click",
   targetName: "confirm",
   target: {
-    frame: ["workarea"],
+    scope: ["workarea"],
     role: "button",
     strategies: [{ kind: "role_name", name: "Confirm" }],
     rationale: "test",
@@ -82,17 +82,17 @@ describe("guarded executor", () => {
     expect(JSON.parse(lines[0]!)).toMatchObject({ event: "action_denied", rule: "action_type" });
   });
 
-  it("denies a frame outside the allowlist", async () => {
+  it("denies a scope outside the allowlist", async () => {
     const { executor, surface } = setup();
     const target = {
       ...click().target,
-      frame: ["nav"],
+      scope: ["nav"],
       role: "link",
       strategies: [{ kind: "role_name" as const, name: "Admin" }],
     };
     expect(await executor.perform(click({ target }))).toMatchObject({
       status: "denied",
-      rule: "frame",
+      rule: "scope",
     });
     expect(surface.actions).toHaveLength(0);
   });
@@ -177,15 +177,15 @@ describe("policy preflight and redaction", () => {
     const requires = {
       actions: ["click" as const, "select" as const],
       maxRisk: "read" as const,
-      frames: ["workarea"],
+      scopes: ["workarea"],
     };
     expect(checkRequires(policy, requires)).toMatchObject({
       decision: "deny",
       rule: "action_type",
     });
     expect(
-      checkRequires(policy, { ...requires, actions: ["click"], frames: ["nav"] }),
-    ).toMatchObject({ rule: "frame" });
+      checkRequires(policy, { ...requires, actions: ["click"], scopes: ["nav"] }),
+    ).toMatchObject({ rule: "scope" });
     expect(
       checkRequires(
         { ...policy, maxRisk: "read" },

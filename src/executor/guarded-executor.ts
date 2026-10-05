@@ -42,7 +42,7 @@ export type ExecutorOptions = {
 
 /**
  * The only path to the surface. Checks run in a fixed order before anything is resolved or
- * dispatched: control ownership and epoch, action type, frame, risk.
+ * dispatched: control ownership and epoch, action type, scope, risk.
  */
 export class GuardedExecutor {
   constructor(private readonly options: ExecutorOptions) {}
@@ -70,7 +70,7 @@ export class GuardedExecutor {
     }
     const decision = checkAction(policy, {
       action: request.action,
-      frame: request.target.frame,
+      scope: request.target.scope,
       risk: request.risk,
       approved: request.approved ?? false,
     });

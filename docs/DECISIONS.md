@@ -85,3 +85,9 @@ Short records of the decisions that shape this project. Each has the decision, t
 **Decision.** No queues, services, databases, containers or multi-tenant plumbing.
 **Why.** PDF §7: designing abstractions that could scale is valued; building the infrastructure is not. The layering of profile, capability and tenant binding is the scaling story.
 **Cost.** None within this assignment.
+
+## D15. Targets name a surface scope, not a frame
+
+**Decision.** Targets, signatures, `requires`, the profile and tenant policy use `scope`: an ordered path of named containers that the surface defines. This replaced `frame` on 2026-10-05.
+**Why.** The artifact is meant to be surface-independent (PDF §3.7). The value was already a generic path; only the name was web vocabulary. A desktop surface maps the same field to window then pane, and a modern web page to `[]`, with no schema change. A typed union per surface kind was rejected, because it would put surface kinds into the artifact.
+**Cost.** A surface must produce stable container names. `PlaywrightSurface` uses frame names, so an unnamed iframe has no stable scope yet.

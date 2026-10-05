@@ -2,9 +2,9 @@
   "product": "coreserv",
   "versions": "7.x",
   "surface": "web",
-  "frames": ["banner", "nav", "workarea"],
+  "scopes": ["banner", "nav", "workarea"],
   "versionProbe": {
-    "frame": ["banner"],
+    "scope": ["banner"],
     "pattern": "CoreServ (\\d+\\.\\d+)"
   },
   "login": {
@@ -12,7 +12,7 @@
       {
         "action": "fill",
         "target": {
-          "frame": [],
+          "scope": [],
           "role": "textbox",
           "strategies": [
             {
@@ -28,7 +28,7 @@
       {
         "action": "fill",
         "target": {
-          "frame": [],
+          "scope": [],
           "role": "textbox",
           "strategies": [
             {
@@ -44,7 +44,7 @@
       {
         "action": "click",
         "target": {
-          "frame": [],
+          "scope": [],
           "role": "button",
           "strategies": [
             {
@@ -57,7 +57,7 @@
       }
     ],
     "authenticated": {
-      "frame": ["nav"],
+      "scope": ["nav"],
       "textPresent": "Member Inquiry"
     }
   },
@@ -66,12 +66,12 @@
       "id": "system_notice",
       "disposition": "recover",
       "signature": {
-        "frame": ["workarea"],
+        "scope": ["workarea"],
         "textPresent": "System Notice"
       },
       "handler": {
         "click": {
-          "frame": ["workarea"],
+          "scope": ["workarea"],
           "role": "button",
           "strategies": [
             {
@@ -89,12 +89,12 @@
       "id": "session_expired",
       "disposition": "recover",
       "signature": {
-        "frame": ["workarea"],
+        "scope": ["workarea"],
         "textPresent": "Your session has expired"
       },
       "handler": {
         "click": {
-          "frame": ["workarea"],
+          "scope": ["workarea"],
           "role": "link",
           "strategies": [
             {
@@ -112,7 +112,7 @@
       "id": "app_error",
       "disposition": "fail",
       "signature": {
-        "frame": ["workarea"],
+        "scope": ["workarea"],
         "textPresent": "Application Error"
       }
     },
@@ -120,7 +120,7 @@
       "id": "supervisor_override",
       "disposition": "escalate",
       "signature": {
-        "frame": ["workarea"],
+        "scope": ["workarea"],
         "textPresent": "Supervisor Override Required"
       }
     }

@@ -15,7 +15,7 @@ const EPSILON = 2;
 
 export const normalize = (text: string): string => text.replace(/\s+/g, " ").trim();
 
-const sameFrame = (a: string[], b: string[]): boolean =>
+const sameScope = (a: string[], b: string[]): boolean =>
   a.length === b.length && a.every((name, i) => name === b[i]);
 
 const right = (b: Box): number => b.x + b.width;
@@ -37,10 +37,10 @@ const textElements = (elements: ObservedElement[], text: string): ObservedElemen
  * never narrowed to "the first". Using any strategy but the first is reported by the caller.
  */
 export function resolveTarget(elements: ObservedElement[], target: Target): ElementResolution {
-  const inFrame = elements.filter((e) => sameFrame(e.frame, target.frame));
+  const inScope = elements.filter((e) => sameScope(e.scope, target.scope));
   let ambiguous = 0;
   for (const [strategyIndex, strategy] of target.strategies.entries()) {
-    const matches = candidates(inFrame, target.role, strategy);
+    const matches = candidates(inScope, target.role, strategy);
     const [only] = matches;
     if (matches.length === 1 && only) return { kind: "unique", element: only, strategyIndex };
     if (matches.length > 1 && ambiguous === 0) ambiguous = matches.length;
@@ -161,12 +161,12 @@ export function matchesSignature(observation: Observation, signature: Signature)
   if ("all" in signature) return signature.all.every((s) => matchesSignature(observation, s));
   if ("any" in signature) return signature.any.some((s) => matchesSignature(observation, s));
   if ("textPresent" in signature) {
-    const { frame } = signature;
+    const { scope } = signature;
     const wanted = normalize(signature.textPresent);
     return elements.some(
       (e) =>
         e.role === "text" &&
-        (!frame || sameFrame(e.frame, frame)) &&
+        (!scope || sameScope(e.scope, scope)) &&
         normalize(e.text).includes(wanted),
     );
   }
@@ -194,7 +194,7 @@ export function maskedElements(elements: ObservedElement[], rules: MaskRule[]): 
     for (const label of textElements(elements, rule.label)) {
       const l = label.bounds;
       const peers = elements.filter(
-        (e) => e !== label && sameFrame(e.frame, label.frame) && !contains(e.bounds, l),
+        (e) => e !== label && sameScope(e.scope, label.scope) && !contains(e.bounds, l),
       );
       const found =
         rule.where === "below"
@@ -214,7 +214,7 @@ const MASK = "[masked]";
 export function maskObservation(observation: Observation, rules: MaskRule[]): Observation {
   const masked = maskedElements(observation.elements, rules);
   const hides = (e: ObservedElement): boolean =>
-    masked.some((m) => m === e || (sameFrame(m.frame, e.frame) && contains(e.bounds, m.bounds)));
+    masked.some((m) => m === e || (sameScope(m.scope, e.scope) && contains(e.bounds, m.bounds)));
   return {
     ...observation,
     elements: observation.elements.map((e) =>

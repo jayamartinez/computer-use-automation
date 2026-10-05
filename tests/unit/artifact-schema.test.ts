@@ -62,11 +62,11 @@ describe("artifact schema", () => {
 
   it("rejects `requires` that understates what the steps do", () => {
     const data = draft();
-    data.requires = { actions: ["click", "extract"], maxRisk: "read", frames: ["workarea"] };
+    data.requires = { actions: ["click", "extract"], maxRisk: "read", scopes: ["workarea"] };
     const text = messages(data);
     expect(text).toContain('undeclared action "fill"');
     expect(text).toContain("exceeds declared maxRisk");
-    expect(text).toContain('undeclared frame "nav"');
+    expect(text).toContain('undeclared scope "nav"');
   });
 
   it("rejects locator kinds outside the three semantic ones", () => {
