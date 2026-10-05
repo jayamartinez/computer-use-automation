@@ -1,0 +1,218 @@
+// Target resolution and signature matching over an observation. Pure and surface-agnostic:
+// any surface that can report elements with a role, text and bounds gets all three locator
+// kinds, which is the argument for desktop and OCR surfaces.
+
+import type { Strategy, Target } from "./target.ts";
+import type { Box, MaskRule, Observation, ObservedElement, Signature } from "./types.ts";
+
+export type ElementResolution =
+  | { kind: "unique"; element: ObservedElement; strategyIndex: number }
+  | { kind: "ambiguous"; count: number }
+  | { kind: "none" };
+
+// Sub-pixel layout noise; also the margin under which two candidates count as tied.
+const EPSILON = 2;
+
+export const normalize = (text: string): string => text.replace(/\s+/g, " ").trim();
+
+const sameFrame = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every((name, i) => name === b[i]);
+
+const right = (b: Box): number => b.x + b.width;
+const bottom = (b: Box): number => b.y + b.height;
+const overlapsX = (a: Box, b: Box): boolean => a.x < right(b) - EPSILON && b.x < right(a) - EPSILON;
+const overlapsY = (a: Box, b: Box): boolean =>
+  a.y < bottom(b) - EPSILON && b.y < bottom(a) - EPSILON;
+const contains = (outer: Box, inner: Box): boolean =>
+  outer.x <= inner.x + EPSILON &&
+  outer.y <= inner.y + EPSILON &&
+  right(outer) >= right(inner) - EPSILON &&
+  bottom(outer) >= bottom(inner) - EPSILON;
+
+const textElements = (elements: ObservedElement[], text: string): ObservedElement[] =>
+  elements.filter((e) => e.role === "text" && normalize(e.text) === normalize(text));
+
+/**
+ * Strategies are tried in order. One that matches zero or several elements is skipped; it is
+ * never narrowed to "the first". Using any strategy but the first is reported by the caller.
+ */
+export function resolveTarget(elements: ObservedElement[], target: Target): ElementResolution {
+  const inFrame = elements.filter((e) => sameFrame(e.frame, target.frame));
+  let ambiguous = 0;
+  for (const [strategyIndex, strategy] of target.strategies.entries()) {
+    const matches = candidates(inFrame, target.role, strategy);
+    const [only] = matches;
+    if (matches.length === 1 && only) return { kind: "unique", element: only, strategyIndex };
+    if (matches.length > 1 && ambiguous === 0) ambiguous = matches.length;
+  }
+  return ambiguous > 0 ? { kind: "ambiguous", count: ambiguous } : { kind: "none" };
+}
+
+function candidates(
+  elements: ObservedElement[],
+  role: string,
+  strategy: Strategy,
+): ObservedElement[] {
+  const ofRole = elements.filter((e) => e.role === role);
+  switch (strategy.kind) {
+    case "role_name":
+      return ofRole.filter((e) => normalize(e.name) === normalize(strategy.name));
+    case "anchor":
+      return byAnchor(elements, ofRole, strategy);
+    case "table_cell":
+      return byTableCell(elements, ofRole, strategy);
+    default:
+      return strategy satisfies never;
+  }
+}
+
+function byAnchor(
+  elements: ObservedElement[],
+  ofRole: ObservedElement[],
+  strategy: Extract<Strategy, { kind: "anchor" }>,
+): ObservedElement[] {
+  const anchors = textElements(elements, strategy.text);
+  const [anchor] = anchors;
+  // An anchor that appears more than once cannot say which control is meant.
+  if (anchors.length !== 1 || !anchor) return [];
+  const a = anchor.bounds;
+  switch (strategy.relation) {
+    case "same_row":
+      return ofRole.filter((e) => overlapsY(e.bounds, a) && !contains(e.bounds, a));
+    case "right_of":
+      return nearest(
+        ofRole.filter((e) => overlapsY(e.bounds, a) && e.bounds.x >= right(a) - EPSILON),
+        (e) => e.bounds.x - right(a),
+      );
+    case "below":
+      return nearest(
+        ofRole.filter((e) => overlapsX(e.bounds, a) && e.bounds.y >= bottom(a) - EPSILON),
+        (e) => e.bounds.y - bottom(a),
+      );
+    default:
+      return strategy.relation satisfies never;
+  }
+}
+
+// "Right of" and "below" mean the adjacent control. Candidates tied for nearest are all
+// returned, so a tie is reported as ambiguous instead of being broken arbitrarily.
+function nearest(
+  found: ObservedElement[],
+  distance: (e: ObservedElement) => number,
+): ObservedElement[] {
+  const closest = Math.min(...found.map(distance));
+  return found.filter((e) => distance(e) - closest <= EPSILON);
+}
+
+/**
+ * The header row is located by its visible text, the row by the key value beneath the key
+ * header, and the cell by intersecting the row band with the column band. No DOM table
+ * structure is assumed, so layout tables and bold-<td> headers resolve the same way.
+ */
+function byTableCell(
+  elements: ObservedElement[],
+  ofRole: ObservedElement[],
+  strategy: Extract<Strategy, { kind: "table_cell" }>,
+): ObservedElement[] {
+  const labels = [...new Set([...strategy.headers, strategy.row.column, strategy.column])];
+  const [firstLabel, ...otherLabels] = labels;
+  if (!firstLabel) return [];
+
+  const headerRows: Map<string, ObservedElement>[] = [];
+  for (const first of textElements(elements, firstLabel)) {
+    const row = new Map([[firstLabel, first]]);
+    for (const label of otherLabels) {
+      const inRow = textElements(elements, label).filter((e) => overlapsY(e.bounds, first.bounds));
+      const [only] = inRow;
+      if (inRow.length === 1 && only) row.set(label, only);
+    }
+    if (row.size === labels.length) headerRows.push(row);
+  }
+  const [headerRow] = headerRows;
+  if (headerRows.length !== 1 || !headerRow) return [];
+
+  const keyHeader = headerRow.get(strategy.row.column)!.bounds;
+  const columnHeader = headerRow.get(strategy.column)!.bounds;
+  const keys = textElements(elements, strategy.row.equals).filter(
+    (e) => overlapsX(e.bounds, keyHeader) && e.bounds.y >= bottom(keyHeader) - EPSILON,
+  );
+  // Two rows with the same key: every matching cell is a candidate, so the result is ambiguous.
+  return keys.flatMap((key) =>
+    ofRole.filter(
+      (e) =>
+        overlapsX(e.bounds, columnHeader) &&
+        overlapsY(e.bounds, key.bounds) &&
+        // A layout cell wrapping the whole table also intersects both bands.
+        !contains(e.bounds, columnHeader),
+    ),
+  );
+}
+
+export function matchesSignature(observation: Observation, signature: Signature): boolean {
+  const { elements } = observation;
+  if ("all" in signature) return signature.all.every((s) => matchesSignature(observation, s));
+  if ("any" in signature) return signature.any.some((s) => matchesSignature(observation, s));
+  if ("textPresent" in signature) {
+    const { frame } = signature;
+    const wanted = normalize(signature.textPresent);
+    return elements.some(
+      (e) =>
+        e.role === "text" &&
+        (!frame || sameFrame(e.frame, frame)) &&
+        normalize(e.text).includes(wanted),
+    );
+  }
+  if ("resolvable" in signature) {
+    return resolveTarget(elements, signature.resolvable).kind === "unique";
+  }
+  if ("textEquals" in signature) {
+    const found = resolveTarget(elements, signature.textEquals.target);
+    return (
+      found.kind === "unique" &&
+      normalize(found.element.text) === normalize(signature.textEquals.value)
+    );
+  }
+  const found = resolveTarget(elements, signature.valueEquals.target);
+  return found.kind === "unique" && found.element.value === signature.valueEquals.value;
+}
+
+/**
+ * Elements holding a sensitive value: everything in the column beneath a mask label, or the
+ * element immediately to its right. Used for screenshots and, via maskObservation, for dumps.
+ */
+export function maskedElements(elements: ObservedElement[], rules: MaskRule[]): ObservedElement[] {
+  const masked = new Set<ObservedElement>();
+  for (const rule of rules) {
+    for (const label of textElements(elements, rule.label)) {
+      const l = label.bounds;
+      const peers = elements.filter(
+        (e) => e !== label && sameFrame(e.frame, label.frame) && !contains(e.bounds, l),
+      );
+      const found =
+        rule.where === "below"
+          ? peers.filter((e) => overlapsX(e.bounds, l) && e.bounds.y >= bottom(l) - EPSILON)
+          : nearest(
+              peers.filter((e) => overlapsY(e.bounds, l) && e.bounds.x >= right(l) - EPSILON),
+              (e) => e.bounds.x - right(l),
+            );
+      for (const e of found) masked.add(e);
+    }
+  }
+  return [...masked];
+}
+
+const MASK = "[masked]";
+
+export function maskObservation(observation: Observation, rules: MaskRule[]): Observation {
+  const masked = maskedElements(observation.elements, rules);
+  const hides = (e: ObservedElement): boolean =>
+    masked.some((m) => m === e || (sameFrame(m.frame, e.frame) && contains(e.bounds, m.bounds)));
+  return {
+    ...observation,
+    elements: observation.elements.map((e) =>
+      hides(e)
+        ? { ...e, name: MASK, text: MASK, ...(e.value === undefined ? {} : { value: MASK }) }
+        : e,
+    ),
+  };
+}
