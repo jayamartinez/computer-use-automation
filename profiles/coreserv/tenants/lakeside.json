@@ -1,0 +1,17 @@
+{
+  "tenant": "lakeside",
+  "product": "coreserv",
+  "deployedVersion": "7.2",
+  "baseUrl": "http://localhost:4070",
+  "credentials": {
+    "operatorId": "env:CORESERV_OPERATOR_ID",
+    "password": "env:CORESERV_OPERATOR_PASSWORD"
+  },
+  "policy": {
+    "origins": ["http://localhost:4070"],
+    "denyPaths": ["/__admin/"],
+    "frames": ["banner", "nav", "workarea"],
+    "actions": ["click", "fill", "select", "extract", "assert"],
+    "maxRisk": "irreversible"
+  }
+}

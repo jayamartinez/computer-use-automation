@@ -1,0 +1,91 @@
+{
+  "product": "coreserv",
+  "versions": "7.x",
+  "surface": "web",
+  "frames": ["banner", "nav", "workarea"],
+  "versionProbe": { "frame": ["banner"], "pattern": "CoreServ (\\d+\\.\\d+)" },
+  "login": {
+    "steps": [
+      {
+        "action": "fill",
+        "target": {
+          "frame": [],
+          "role": "textbox",
+          "strategies": [{ "kind": "anchor", "text": "Operator ID", "relation": "right_of" }],
+          "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
+        },
+        "value": "{{secrets.operatorId}}"
+      },
+      {
+        "action": "fill",
+        "target": {
+          "frame": [],
+          "role": "textbox",
+          "strategies": [{ "kind": "anchor", "text": "Password", "relation": "right_of" }],
+          "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
+        },
+        "value": "{{secrets.password}}"
+      },
+      {
+        "action": "click",
+        "target": {
+          "frame": [],
+          "role": "button",
+          "strategies": [{ "kind": "role_name", "name": "Sign In" }],
+          "rationale": "Submit button named by its value."
+        }
+      }
+    ],
+    "authenticated": { "frame": ["nav"], "textPresent": "Member Inquiry" }
+  },
+  "conditions": [
+    {
+      "id": "system_notice",
+      "disposition": "recover",
+      "signature": { "frame": ["workarea"], "textPresent": "System Notice" },
+      "handler": {
+        "click": {
+          "frame": ["workarea"],
+          "role": "button",
+          "strategies": [{ "kind": "role_name", "name": "Acknowledge" }],
+          "rationale": "The interstitial's only control."
+        }
+      },
+      "resume": "continue",
+      "maxAttempts": 2
+    },
+    {
+      "id": "session_expired",
+      "disposition": "recover",
+      "signature": { "frame": ["workarea"], "textPresent": "Your session has expired" },
+      "handler": "login",
+      "resume": "restart_if_no_side_effects",
+      "maxAttempts": 1
+    },
+    {
+      "id": "app_error",
+      "disposition": "fail",
+      "signature": { "frame": ["workarea"], "textPresent": "Application Error" }
+    },
+    {
+      "id": "supervisor_override",
+      "disposition": "escalate",
+      "signature": { "frame": ["workarea"], "textPresent": "Supervisor Override Required" }
+    }
+  ],
+  "risk": {
+    "safeControls": [
+      "Search",
+      "View",
+      "Continue",
+      "Acknowledge",
+      "Member Inquiry",
+      "Open Sub-Account"
+    ],
+    "commitControls": ["Confirm"]
+  },
+  "masks": [
+    { "label": "Account No", "where": "below" },
+    { "label": "SSN", "where": "right_of" }
+  ]
+}
