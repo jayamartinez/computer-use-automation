@@ -9,7 +9,7 @@
   },
   "policy": {
     "origins": ["http://localhost:4070"],
-    "denyPaths": ["/__admin/"],
+    "paths": ["/", "/cs.do"],
     "scopes": ["banner", "nav", "workarea"],
     "actions": ["click", "fill", "select", "extract", "assert"],
     "maxRisk": "irreversible"

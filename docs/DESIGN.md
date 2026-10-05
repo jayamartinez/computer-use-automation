@@ -360,7 +360,7 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
   "tenant": "lakeside", "product": "coreserv", "deployedVersion": "7.2",
   "baseUrl": "http://localhost:4070",
   "credentials": { "operatorId": "env:CORESERV_OPERATOR_ID", "password": "env:CORESERV_OPERATOR_PASSWORD" },
-  "policy": { "origins": ["http://localhost:4070"], "denyPaths": ["/__admin/"],
+  "policy": { "origins": ["http://localhost:4070"], "paths": ["/", "/cs.do"],
               "actions": ["click", "fill", "select", "extract", "assert"],
               "maxRisk": "irreversible", "irreversible": "require_approval" }
 }
@@ -379,7 +379,7 @@ Checks, in order, for every action:
 4. Risk class is within `maxRisk`; an irreversible action has an approval.
 5. Execute through the surface; log the event with redaction applied.
 
-Independent of these, the browser context blocks any request to an origin outside the allowlist and any denied path.
+Independent of these, the browser context blocks every request whose origin and path are not both on the tenant allowlist (`paths` entries are exact, or a prefix when they end in `*`). It fails closed, so the admin endpoints are blocked because they are not listed.
 
 ## 10. Human handoff
 

@@ -29,6 +29,19 @@ export function checkAction(policy: Policy, request: PolicyRequest): PolicyDecis
   return { decision: "allow", rule: `${request.action}:${request.risk}` };
 }
 
+/**
+ * The network allowlist. It fails closed: a request is allowed only when both its origin and
+ * its path are listed.
+ */
+export function requestAllowed(policy: Policy, url: URL): boolean {
+  return (
+    policy.origins.includes(url.origin) &&
+    policy.paths.some((path) =>
+      path.endsWith("*") ? url.pathname.startsWith(path.slice(0, -1)) : url.pathname === path,
+    )
+  );
+}
+
 /** Rejects an artifact from its declared needs, before anything touches the application. */
 export function checkRequires(policy: Policy, requires: Artifact["requires"]): PolicyDecision {
   const action = requires.actions.find((a) => !policy.actions.includes(a));

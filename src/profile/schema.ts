@@ -66,7 +66,8 @@ export type Profile = z.infer<typeof ProfileSchema>;
 
 const PolicySchema = z.strictObject({
   origins: z.array(z.url()).min(1),
-  denyPaths: z.array(z.string()),
+  // Exact paths, or a prefix when the entry ends in `*`. Anything not listed is blocked.
+  paths: z.array(z.string().regex(/^\/[^*]*\*?$/, "A path starts with / and may end in *")).min(1),
   scopes: z.array(z.string()),
   actions: z.array(ActionTypeSchema),
   maxRisk: RiskSchema,

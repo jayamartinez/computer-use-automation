@@ -42,6 +42,7 @@ Short records of the decisions that shape this project. Each has the decision, t
 
 **Decision.** Risk classification comes from profile rules and reviewed step metadata. The guarded executor is the only path to the surface. The origin allowlist is also enforced at the network layer.
 **Why.** A model cannot be the control on its own actions. A click's destination is unknown when the decision is made, so the network layer is the backstop.
+**Update (2026-10-05).** The path rule is an allowlist (`paths`), replacing the earlier deny list (`denyPaths`). A deny list fails open for any path nobody thought of; PDF §3.4 asks for permitted routes. With opaque postback URLs the CoreServ list is short: `/` and `/cs.do`.
 **Cost.** The profile's safe and commit control lists are hand-authored per app. Unknown buttons require approval in discovery, which can be chatty.
 
 ## D8. Irreversible steps: approval, no retry, unknown outcome is explicit

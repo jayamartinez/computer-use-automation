@@ -3,14 +3,14 @@ import { RunLog } from "../../src/evidence/run-log.ts";
 import { redact } from "../../src/evidence/redact.ts";
 import { ControlState } from "../../src/executor/control.ts";
 import { GuardedExecutor, type ActionRequest } from "../../src/executor/guarded-executor.ts";
-import { checkRequires } from "../../src/executor/policy.ts";
+import { checkRequires, requestAllowed } from "../../src/executor/policy.ts";
 import type { Policy } from "../../src/profile/schema.ts";
 import { FakeSurface } from "../../src/surface/fake/fake-surface.ts";
 import { fakeElement } from "../support/fake-coreserv.ts";
 
 const policy: Policy = {
   origins: ["http://localhost:4070"],
-  denyPaths: ["/__admin/"],
+  paths: ["/", "/cs.do", "/static/*"],
   scopes: ["workarea"],
   actions: ["click", "fill", "extract"],
   maxRisk: "irreversible",
@@ -193,6 +193,19 @@ describe("policy preflight and redaction", () => {
       ),
     ).toMatchObject({ rule: "max_risk" });
     expect(checkRequires(policy, { ...requires, actions: ["click"] }).decision).toBe("allow");
+  });
+
+  it("allows a request only when both its origin and its path are listed", () => {
+    const allowed = (url: string) => requestAllowed(policy, new URL(url));
+    expect(allowed("http://localhost:4070/")).toBe(true);
+    expect(allowed("http://localhost:4070/cs.do?act=8f2a")).toBe(true);
+    expect(allowed("http://localhost:4070/static/app.css")).toBe(true);
+    // Fail closed: anything not listed is blocked, not just what someone thought to deny.
+    expect(allowed("http://localhost:4070/__admin/reset")).toBe(false);
+    expect(allowed("http://localhost:4070/favicon.ico")).toBe(false);
+    expect(allowed("http://localhost:4070/cs.do/extra")).toBe(false);
+    expect(allowed("http://localhost:4071/cs.do")).toBe(false);
+    expect(allowed("http://127.0.0.1:4070/cs.do")).toBe(false);
   });
 
   it("masks by sensitivity", () => {

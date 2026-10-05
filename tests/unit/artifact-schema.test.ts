@@ -5,6 +5,7 @@ import { ArtifactError, contentHash, parseArtifact } from "../../src/artifact/st
 import { render, renderDeep } from "../../src/artifact/template.ts";
 import { ReplayResultSchema } from "../../src/outcome/result.ts";
 import { resolveSecrets } from "../../src/profile/load.ts";
+import { TenantSchema } from "../../src/profile/schema.ts";
 import { coreservProfile, FIXTURE_PATH, lakeside, lookupArtifact } from "../support/fixtures.ts";
 
 // A fresh, mutable copy of the fixture for each rejection case.
@@ -111,7 +112,12 @@ describe("profile and tenant binding", () => {
       "fail",
       "escalate",
     ]);
-    expect(tenant.policy.denyPaths).toContain("/__admin/");
+    expect(tenant.policy.paths).toEqual(["/", "/cs.do"]);
+    const withPaths = (paths: string[]) =>
+      TenantSchema.safeParse({ ...tenant, policy: { ...tenant.policy, paths } }).success;
+    expect(withPaths(["cs.do"])).toBe(false);
+    expect(withPaths(["/a*/b"])).toBe(false);
+    expect(withPaths([])).toBe(false);
   });
 
   it("resolves credentials from the environment and never from the file", async () => {

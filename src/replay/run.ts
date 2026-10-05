@@ -6,6 +6,7 @@ import { redact, SECRET } from "../evidence/redact.ts";
 import { RunLog } from "../evidence/run-log.ts";
 import { ControlState } from "../executor/control.ts";
 import { GuardedExecutor } from "../executor/guarded-executor.ts";
+import { requestAllowed } from "../executor/policy.ts";
 import type { ReplayResult } from "../outcome/result.ts";
 import type { Profile, Tenant } from "../profile/schema.ts";
 import { PlaywrightSurface } from "../surface/playwright/playwright-surface.ts";
@@ -43,7 +44,7 @@ export async function runReplay(options: RunReplayOptions): Promise<ReplayResult
 
   const surface = await PlaywrightSurface.launch({
     entryUrl: tenant.baseUrl,
-    network: { origins: tenant.policy.origins, denyPaths: tenant.policy.denyPaths },
+    allowRequest: (url) => requestAllowed(tenant.policy, url),
     headed: options.headed ?? false,
     onBlocked: (url) => log.write("request_blocked", { url }),
   });

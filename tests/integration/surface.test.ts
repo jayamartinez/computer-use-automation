@@ -3,14 +3,16 @@ import { renderDeep } from "../../src/artifact/template.ts";
 import { PlaywrightSurface } from "../../src/surface/playwright/playwright-surface.ts";
 import type { Strategy, Target } from "../../src/surface/target.ts";
 import { OPERATOR, startTestApp } from "../support/demo-app.ts";
-import { coreservProfile, lookupArtifact } from "../support/fixtures.ts";
+import { requestAllowed } from "../../src/executor/policy.ts";
+import { coreservProfile, lakesideAt, lookupArtifact } from "../support/fixtures.ts";
 
 let app: Awaited<ReturnType<typeof startTestApp>>;
 let surface: PlaywrightSurface;
 let targets: Record<string, Target>;
 const blocked: string[] = [];
 
-const network = () => ({ origins: [app.url], denyPaths: ["/__admin/"] });
+// The lakeside binding's own network allowlist, pointed at this test instance.
+let allowRequest: (url: URL) => boolean;
 const workarea = (role: string, ...strategies: Strategy[]): Target => ({
   scope: ["workarea"],
   role,
@@ -42,9 +44,11 @@ const kind = async (target: Target) => (await surface.resolve(target)).kind;
 
 beforeAll(async () => {
   app = await startTestApp();
+  const { policy } = await lakesideAt(app.url);
+  allowRequest = (url) => requestAllowed(policy, url);
   surface = await PlaywrightSurface.launch({
     entryUrl: app.url,
-    network: network(),
+    allowRequest,
     onBlocked: (u) => blocked.push(u),
   });
   const artifact = await lookupArtifact();
@@ -145,7 +149,7 @@ describe("PlaywrightSurface against CoreServ", () => {
     const png = await surface.screenshot({ mask: [{ label: "Account No", where: "below" }] });
     expect(png.subarray(1, 4).toString()).toBe("PNG");
 
-    const login = await PlaywrightSurface.launch({ entryUrl: app.url, network: network() });
+    const login = await PlaywrightSurface.launch({ entryUrl: app.url, allowRequest });
     try {
       const profile = await coreservProfile();
       const password = await login.resolve(profile.login.steps[1]!.target);
@@ -159,11 +163,18 @@ describe("PlaywrightSurface against CoreServ", () => {
 });
 
 describe("network allowlist", () => {
-  it("blocks the admin path and any other origin at the network layer", async () => {
+  it("blocks unlisted paths, the admin path and any other origin at the network layer", async () => {
+    await expect(
+      PlaywrightSurface.launch({
+        entryUrl: `${app.url}/report.do`,
+        allowRequest,
+        onBlocked: (u) => blocked.push(u),
+      }),
+    ).rejects.toThrow(/ERR_BLOCKED_BY_CLIENT/);
     await expect(
       PlaywrightSurface.launch({
         entryUrl: `${app.url}/__admin/reset`,
-        network: network(),
+        allowRequest,
         onBlocked: (u) => blocked.push(u),
       }),
     ).rejects.toThrow(/ERR_BLOCKED_BY_CLIENT/);
@@ -171,10 +182,14 @@ describe("network allowlist", () => {
     await expect(
       PlaywrightSurface.launch({
         entryUrl: otherOrigin,
-        network: network(),
+        allowRequest,
         onBlocked: (u) => blocked.push(u),
       }),
     ).rejects.toThrow(/ERR_BLOCKED_BY_CLIENT/);
-    expect(blocked).toEqual([`${app.url}/__admin/reset`, `${otherOrigin}/`]);
+    expect(blocked).toEqual([
+      `${app.url}/report.do`,
+      `${app.url}/__admin/reset`,
+      `${otherOrigin}/`,
+    ]);
   });
 });

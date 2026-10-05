@@ -13,11 +13,10 @@ import type {
   SurfaceAction,
 } from "../types.ts";
 
-export type NetworkPolicy = { origins: string[]; denyPaths: string[] };
-
 export type LaunchOptions = {
   entryUrl: string;
-  network: NetworkPolicy;
+  /** Decides every request the browser makes, including frame loads and redirects. */
+  allowRequest: (url: URL) => boolean;
   headed?: boolean;
   onBlocked?: (url: string) => void;
 };
@@ -112,7 +111,7 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Opens the entry point. There is no navigate action afterwards: the flow moves only by
-   * acting on what is on screen. The origin allowlist is enforced here, at the network layer,
+   * acting on what is on screen. The request allowlist is enforced here, at the network layer,
    * because a click's destination is not known when policy approves the click.
    */
   static async launch(options: LaunchOptions): Promise<PlaywrightSurface> {
@@ -121,10 +120,7 @@ export class PlaywrightSurface implements Surface {
       const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       await context.route("**/*", (route) => {
         const url = new URL(route.request().url());
-        const allowed =
-          options.network.origins.includes(url.origin) &&
-          !options.network.denyPaths.some((path) => url.pathname.startsWith(path));
-        if (allowed) return route.continue();
+        if (options.allowRequest(url)) return route.continue();
         options.onBlocked?.(`${url.origin}${url.pathname}`);
         return route.abort("blockedbyclient");
       });
