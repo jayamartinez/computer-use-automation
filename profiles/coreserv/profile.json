@@ -3,7 +3,10 @@
   "versions": "7.x",
   "surface": "web",
   "frames": ["banner", "nav", "workarea"],
-  "versionProbe": { "frame": ["banner"], "pattern": "CoreServ (\\d+\\.\\d+)" },
+  "versionProbe": {
+    "frame": ["banner"],
+    "pattern": "CoreServ (\\d+\\.\\d+)"
+  },
   "login": {
     "steps": [
       {
@@ -11,7 +14,13 @@
         "target": {
           "frame": [],
           "role": "textbox",
-          "strategies": [{ "kind": "anchor", "text": "Operator ID", "relation": "right_of" }],
+          "strategies": [
+            {
+              "kind": "anchor",
+              "text": "Operator ID",
+              "relation": "right_of"
+            }
+          ],
           "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
         },
         "value": "{{secrets.operatorId}}"
@@ -21,7 +30,13 @@
         "target": {
           "frame": [],
           "role": "textbox",
-          "strategies": [{ "kind": "anchor", "text": "Password", "relation": "right_of" }],
+          "strategies": [
+            {
+              "kind": "anchor",
+              "text": "Password",
+              "relation": "right_of"
+            }
+          ],
           "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
         },
         "value": "{{secrets.password}}"
@@ -31,23 +46,39 @@
         "target": {
           "frame": [],
           "role": "button",
-          "strategies": [{ "kind": "role_name", "name": "Sign In" }],
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "Sign In"
+            }
+          ],
           "rationale": "Submit button named by its value."
         }
       }
     ],
-    "authenticated": { "frame": ["nav"], "textPresent": "Member Inquiry" }
+    "authenticated": {
+      "frame": ["nav"],
+      "textPresent": "Member Inquiry"
+    }
   },
   "conditions": [
     {
       "id": "system_notice",
       "disposition": "recover",
-      "signature": { "frame": ["workarea"], "textPresent": "System Notice" },
+      "signature": {
+        "frame": ["workarea"],
+        "textPresent": "System Notice"
+      },
       "handler": {
         "click": {
           "frame": ["workarea"],
           "role": "button",
-          "strategies": [{ "kind": "role_name", "name": "Acknowledge" }],
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "Acknowledge"
+            }
+          ],
           "rationale": "The interstitial's only control."
         }
       },
@@ -57,22 +88,46 @@
     {
       "id": "session_expired",
       "disposition": "recover",
-      "signature": { "frame": ["workarea"], "textPresent": "Your session has expired" },
-      "handler": "login",
+      "signature": {
+        "frame": ["workarea"],
+        "textPresent": "Your session has expired"
+      },
+      "handler": {
+        "click": {
+          "frame": ["workarea"],
+          "role": "link",
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "Sign in again"
+            }
+          ],
+          "rationale": "The expired screen's only control; it returns the whole window to the sign-in page."
+        }
+      },
       "resume": "restart_if_no_side_effects",
       "maxAttempts": 1
     },
     {
       "id": "app_error",
       "disposition": "fail",
-      "signature": { "frame": ["workarea"], "textPresent": "Application Error" }
+      "signature": {
+        "frame": ["workarea"],
+        "textPresent": "Application Error"
+      }
     },
     {
       "id": "supervisor_override",
       "disposition": "escalate",
-      "signature": { "frame": ["workarea"], "textPresent": "Supervisor Override Required" }
+      "signature": {
+        "frame": ["workarea"],
+        "textPresent": "Supervisor Override Required"
+      }
     }
   ],
+  "timeouts": {
+    "slowLoadMs": 3000
+  },
   "risk": {
     "safeControls": [
       "Search",
@@ -85,7 +140,13 @@
     "commitControls": ["Confirm"]
   },
   "masks": [
-    { "label": "Account No", "where": "below" },
-    { "label": "SSN", "where": "right_of" }
+    {
+      "label": "Account No",
+      "where": "below"
+    },
+    {
+      "label": "SSN",
+      "where": "right_of"
+    }
   ]
 }

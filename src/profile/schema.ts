@@ -14,14 +14,28 @@ const LoginStepSchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("click"), target: TargetSchema }),
 ]);
 
-const ConditionSchema = z.strictObject({
-  id: z.string(),
-  disposition: z.enum(["recover", "escalate", "fail"]),
+// A screen state any capability of this app can run into, and what replay does about it.
+const conditionCommon = {
+  id: z.string().regex(/^[a-z][a-z0-9_]*$/),
   signature: TextSignatureSchema,
-  handler: z.union([z.literal("login"), z.strictObject({ click: TargetSchema })]).optional(),
-  resume: z.enum(["continue", "restart_if_no_side_effects"]).optional(),
-  maxAttempts: z.number().int().positive().optional(),
-});
+};
+
+const ConditionSchema = z.discriminatedUnion("disposition", [
+  z.strictObject({
+    ...conditionCommon,
+    disposition: z.literal("recover"),
+    // The control that clears the condition. Without one, resuming is enough.
+    handler: z.strictObject({ click: TargetSchema }).optional(),
+    // `continue` re-waits for the interrupted step's expected state. A restart signs in again
+    // and starts from the first step, and only while no irreversible step has been dispatched.
+    resume: z.enum(["continue", "restart_if_no_side_effects"]),
+    // Per condition per run; one more match is `recovery_exhausted`.
+    maxAttempts: z.number().int().positive().default(2),
+  }),
+  z.strictObject({ ...conditionCommon, disposition: z.literal("escalate") }),
+  z.strictObject({ ...conditionCommon, disposition: z.literal("fail") }),
+]);
+export type Condition = z.infer<typeof ConditionSchema>;
 
 export const ProfileSchema = z.strictObject({
   product: z.string(),
@@ -35,6 +49,10 @@ export const ProfileSchema = z.strictObject({
     authenticated: TextSignatureSchema,
   }),
   conditions: z.array(ConditionSchema),
+  timeouts: z.strictObject({
+    // Waiting for a state is built in; taking longer than this adds a `slow_load` warning.
+    slowLoadMs: z.number().int().positive(),
+  }),
   risk: z.strictObject({
     safeControls: z.array(z.string()),
     commitControls: z.array(z.string()),

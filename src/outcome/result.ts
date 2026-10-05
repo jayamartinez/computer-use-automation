@@ -18,6 +18,33 @@ export const FailureCategorySchema = z.enum([
 ]);
 export type FailureCategory = z.infer<typeof FailureCategorySchema>;
 
+/**
+ * Whether a failure with no side effects could go differently on a second try with the same
+ * inputs. Failures fixed by the inputs, the policy, the artifact or a human decision cannot.
+ * `outcome_unknown` qualifies only once a human has confirmed nothing was committed.
+ */
+const TRANSIENT: Record<FailureCategory, boolean> = {
+  invalid_input: false,
+  policy_denied: false,
+  target_unresolved: false,
+  target_ambiguous: false,
+  unexpected_state: true,
+  app_error: true,
+  extraction_invalid: false,
+  recovery_exhausted: true,
+  outcome_unknown: true,
+  aborted_by_human: false,
+  escalation_timeout: true,
+};
+
+/** `safeToRetry` tells a calling agent both that retrying cannot duplicate work and that it may help. */
+export function safeToRetry(
+  category: FailureCategory,
+  sideEffects: Failure["sideEffects"],
+): boolean {
+  return sideEffects === "none" && TRANSIENT[category];
+}
+
 const OutputValueSchema = z.union([
   z.string(),
   z.number(),

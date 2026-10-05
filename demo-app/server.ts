@@ -22,12 +22,19 @@ type Action =
 
 type Session = { authenticated: boolean; actions: Map<string, Action> };
 
+// Server-side fault injection, set through the admin endpoint. Faults that show a screen
+// (notice, session expiry, application error) arrive with those screens.
+type Faults = { latencyMs: number };
+const NO_FAULTS: Faults = { latencyMs: 0 };
+const MAX_LATENCY_MS = 60_000;
+
 const COOKIE = "CSSESSION";
 
 export async function startCoreServ(
   config: CoreServConfig,
 ): Promise<{ url: string; close: () => Promise<void> }> {
   let members: Member[] = seedMembers();
+  let faults: Faults = NO_FAULTS;
   const sessions = new Map<string, Session>();
 
   const link = (session: Session, action: Action): string => {
@@ -97,10 +104,25 @@ export async function startCoreServ(
     if (url.pathname === "/__admin/reset" && req.method === "POST") {
       members = seedMembers();
       sessions.clear();
+      faults = NO_FAULTS;
       res.writeHead(200, { "content-type": "text/plain" });
       res.end("ok");
       return;
     }
+    if (url.pathname === "/__admin/faults" && req.method === "POST") {
+      const update = parseFaults(await readBody(req));
+      if (!update) {
+        res.writeHead(400, { "content-type": "text/plain" });
+        res.end(`Expected JSON like {"latencyMs": 300} (0 to ${MAX_LATENCY_MS})`);
+        return;
+      }
+      faults = { ...faults, ...update };
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(faults));
+      return;
+    }
+
+    if (faults.latencyMs > 0) await new Promise((r) => setTimeout(r, faults.latencyMs));
 
     const cookie = (req.headers.cookie ?? "")
       .split(";")
@@ -167,6 +189,25 @@ export async function startCoreServ(
         server.close(() => resolve());
       }),
   };
+}
+
+function parseFaults(body: string): Partial<Faults> | undefined {
+  let data: unknown;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+  if (data === null || typeof data !== "object" || Array.isArray(data)) return undefined;
+  const { latencyMs, ...unknown } = data as Record<string, unknown>;
+  if (Object.keys(unknown).length > 0) return undefined;
+  if (latencyMs === undefined) return {};
+  const valid =
+    typeof latencyMs === "number" &&
+    Number.isInteger(latencyMs) &&
+    latencyMs >= 0 &&
+    latencyMs <= MAX_LATENCY_MS;
+  return valid ? { latencyMs } : undefined;
 }
 
 async function readBody(req: IncomingMessage): Promise<string> {

@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Artifact } from "../../src/artifact/schema.ts";
+import type { Profile } from "../../src/profile/schema.ts";
+import type { Strategy } from "../../src/surface/target.ts";
 import { ReplayResultSchema } from "../../src/outcome/result.ts";
 import { runReplay } from "../../src/replay/run.ts";
 import { OPERATOR, startTestApp } from "../support/demo-app.ts";
@@ -18,17 +20,35 @@ beforeAll(async () => {
 });
 afterAll(() => app.close());
 
-async function run(memberId: string, artifact?: Artifact) {
+async function run(memberId: string, artifact?: Artifact, profile?: Profile) {
   const result = await runReplay({
     artifact: artifact ?? (await lookupArtifact()),
     inputs: { memberId },
-    profile: await coreservProfile(),
+    profile: profile ?? (await coreservProfile()),
     tenant: await lakesideAt(app.url),
     secrets: OPERATOR,
     runsDir: tempDir(),
   });
   ReplayResultSchema.parse(result);
   return { result, log: readFileSync(result.log, "utf8") };
+}
+
+/** A test copy of the artifact whose Search button strategies no longer match the app. */
+async function withSearchStrategies(...strategies: Strategy[]): Promise<Artifact> {
+  const artifact = withTimeouts(await lookupArtifact(), 600);
+  const search = artifact.targets.search_button!;
+  return {
+    ...artifact,
+    targets: { ...artifact.targets, search_button: { ...search, strategies } },
+  };
+}
+
+async function setFaults(faults: Record<string, number>): Promise<void> {
+  const response = await fetch(`${app.url}/__admin/faults`, {
+    method: "POST",
+    body: JSON.stringify(faults),
+  });
+  if (!response.ok) throw new Error(await response.text());
 }
 
 describe("replay: lookup_balance against the real demo app", () => {
@@ -123,5 +143,78 @@ describe("replay: lookup_balance against the real demo app", () => {
     const { result, log } = await run("1007");
     expect(result).toMatchObject({ status: "failure", failure: { category: "invalid_input" } });
     expect(log).not.toContain('"event":"action"');
+  });
+});
+
+describe("replay: exceptional states against the real demo app", () => {
+  it("returns MEMBER_NOT_FOUND for a member that does not exist", async () => {
+    const { result } = await run("99999");
+    expect(result).toMatchObject({
+      status: "business_outcome",
+      stepsCompleted: 2,
+      outcome: { code: "MEMBER_NOT_FOUND", atStep: "search" },
+    });
+  });
+
+  it("returns PERMISSION_DENIED for an employee account", async () => {
+    const { result } = await run("10200");
+    expect(result).toMatchObject({
+      status: "business_outcome",
+      stepsCompleted: 3,
+      outcome: { code: "PERMISSION_DENIED", atStep: "open_member" },
+    });
+  });
+
+  it("fails with target_unresolved when a relabeled control has no other strategy", async () => {
+    const { result } = await run(
+      "10077",
+      await withSearchStrategies({ kind: "role_name", name: "Find" }),
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      stepsCompleted: 2,
+      failure: {
+        category: "target_unresolved",
+        stepId: "search",
+        sideEffects: "none",
+        safeToRetry: false,
+      },
+    });
+  });
+
+  it("succeeds on a second strategy and records a locator_fallback warning", async () => {
+    const artifact = await withSearchStrategies(
+      { kind: "role_name", name: "Find" },
+      { kind: "role_name", name: "Search" },
+    );
+    const { result } = await run("10077", artifact);
+    expect(result).toMatchObject({
+      status: "success",
+      outputs: { savingsBalance: { amount: "15902.66", currency: "USD" } },
+      warnings: [{ kind: "locator_fallback", stepId: "search" }],
+    });
+  });
+
+  it("resolves every target through injected latency and reports slow loads", async () => {
+    const profile = await coreservProfile();
+    await setFaults({ latencyMs: 300 });
+    try {
+      const { result } = await run("10077", undefined, {
+        ...profile,
+        timeouts: { slowLoadMs: 200 },
+      });
+      expect(result).toMatchObject({
+        status: "success",
+        outputs: { savingsBalance: { amount: "15902.66", currency: "USD" } },
+      });
+      expect(result.warnings.map((w) => w.stepId)).toEqual([
+        "open_inquiry",
+        "search",
+        "open_member",
+      ]);
+      expect(result.warnings.every((w) => w.kind === "slow_load")).toBe(true);
+    } finally {
+      await setFaults({ latencyMs: 0 });
+    }
   });
 });

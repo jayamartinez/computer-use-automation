@@ -118,14 +118,25 @@ export class GuardedExecutor {
     return { status: "done", element: resolution.element, strategyIndex: resolution.strategyIndex };
   }
 
-  /** Waits for a screen state. Observing is not an action and needs no policy decision. */
-  async waitFor(signature: Signature, timeoutMs: number): Promise<boolean> {
-    const deadline = Date.now() + timeoutMs;
+  /**
+   * Waits for the first of several screen states, in the order given. Observing is not an
+   * action and needs no policy decision. A zero timeout checks the current screen once.
+   */
+  async race(
+    signatures: Signature[],
+    timeoutMs: number,
+  ): Promise<{ index: number; ms: number } | undefined> {
+    const started = Date.now();
     for (;;) {
-      if (await this.options.surface.matches(signature)) return true;
-      if (Date.now() >= deadline) return false;
+      const index = await this.options.surface.firstMatch(signatures);
+      if (index !== undefined) return { index, ms: Date.now() - started };
+      if (Date.now() - started >= timeoutMs) return undefined;
       await sleep(POLL_MS);
     }
+  }
+
+  async waitFor(signature: Signature, timeoutMs: number): Promise<boolean> {
+    return (await this.race([signature], timeoutMs)) !== undefined;
   }
 
   /** Saves a masked screenshot and a masked element dump for a failure report. */

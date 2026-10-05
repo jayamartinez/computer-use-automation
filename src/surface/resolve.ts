@@ -148,6 +148,14 @@ function byTableCell(
   );
 }
 
+export function firstMatching(
+  observation: Observation,
+  signatures: Signature[],
+): number | undefined {
+  const index = signatures.findIndex((signature) => matchesSignature(observation, signature));
+  return index < 0 ? undefined : index;
+}
+
 export function matchesSignature(observation: Observation, signature: Signature): boolean {
   const { elements } = observation;
   if ("all" in signature) return signature.all.every((s) => matchesSignature(observation, s));

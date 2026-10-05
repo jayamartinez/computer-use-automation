@@ -99,6 +99,18 @@ describe("CoreServ demo app", () => {
     }
   });
 
+  it("injects latency through the faults endpoint and validates what it is given", async () => {
+    const faults = (body: string) => fetch(`${app.url}/__admin/faults`, { method: "POST", body });
+    expect((await faults('{"latencyMs": 250}')).status).toBe(200);
+    const started = Date.now();
+    await fetch(`${app.url}/`);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(250);
+    for (const bad of ["nope", '{"latencyMs": -1}', '{"latencyMs": 1.5}', '{"other": 1}', "[]"]) {
+      expect((await faults(bad)).status).toBe(400);
+    }
+    expect(await (await faults('{"latencyMs": 0}')).json()).toEqual({ latencyMs: 0 });
+  });
+
   it("resets through the admin endpoint", async () => {
     const s = await signedIn();
     expect((await fetch(`${app.url}/__admin/reset`, { method: "POST" })).status).toBe(200);

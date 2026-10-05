@@ -1,6 +1,6 @@
 import { chromium, type Browser, type Frame, type Locator, type Page } from "playwright";
 import { makeObservation } from "../observation.ts";
-import { maskedElements, matchesSignature, resolveTarget } from "../resolve.ts";
+import { firstMatching, maskedElements, matchesSignature, resolveTarget } from "../resolve.ts";
 import type { Target } from "../target.ts";
 import type {
   Handle,
@@ -228,6 +228,10 @@ export class PlaywrightSurface implements Surface {
 
   async matches(signature: Signature): Promise<boolean> {
     return matchesSignature(await this.observe(), signature);
+  }
+
+  async firstMatch(signatures: Signature[]): Promise<number | undefined> {
+    return firstMatching(await this.observe(), signatures);
   }
 
   async screenshot(opts: { mask: MaskRule[] }): Promise<Buffer> {

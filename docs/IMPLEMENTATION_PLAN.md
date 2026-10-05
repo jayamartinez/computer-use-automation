@@ -76,7 +76,7 @@ Data read by several components: app profile, tenant binding.
 ### M5. Surface — `feat(surface): Surface interface, PlaywrightSurface, FakeSurface`
 - [ ] Observation across frames; `resolve` for `role_name`, `anchor`, `table_cell`; `act`; `matches`; masked screenshots; native dialog reporting; `FakeSurface`.
 
-**Partly done (acd90eb).** Everything except native dialog reporting and the 300 ms latency test, which needs the `latencyMs` fault from M3.
+**Partly done (acd90eb).** Everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come with M3.
 
 **Done when:** integration tests against the demo app resolve every target in the lookup fixture uniquely, report `ambiguous` and `none` correctly, and resolve the same targets with 300 ms of injected latency.
 
@@ -96,6 +96,8 @@ Data read by several components: app profile, tenant binding.
 
 ### M8. Replay, exceptional states — `feat(replay): outcomes, recoveries and failure evidence`
 - [ ] State race; outcome signatures; profile conditions with dispositions and bounded recovery; failure evidence.
+
+**Partly done (2026-10-05).** The replay side is complete: the state race, every disposition, bounded recovery, restart after re-login, the condition check on an unresolved target, `slow_load`, and failure evidence. Tested on `FakeSurface` for every condition. Against the real app: both business outcomes, `target_unresolved`, `locator_fallback` and `latencyMs`. The `notice`, `sessionTtl` and `error500` criteria need those screens in the demo app (M3). Their Paper mockups (artboards 7 to 9 on the "CoreServ screens" page) are waiting for approval.
 
 **Done when**, against the real app:
 - 99999 returns `business_outcome: MEMBER_NOT_FOUND`; 10200 returns `PERMISSION_DENIED`.
@@ -170,7 +172,7 @@ E7 needs a person at the keyboard; a short screen recording is welcome. Everythi
 
 ## Deviations from the plan
 
-Recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 and M6 partly). None changes a locked decision in `AGENTS.md`.
+Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 and M6 partly). Items 9 and 10 were added with M8. None changes a locked decision in `AGENTS.md`.
 
 1. **M3 was skipped for now.** The checkpoint needed only the read path, so the write path and fault injection were deferred. M3 must be finished before M8, which depends on the faults. It also unblocks the M5 latency test.
 2. **The assignment PDF arrived after the code was written.** The pass against PDF §3, §6 and §7 was done afterwards (2026-10-05) and found no drift in what is built. Three things it sharpened for later milestones:
@@ -190,13 +192,26 @@ Recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 and M6 partly). No
    - `contentHash` excludes `status`, so approving an artifact does not change the hash of what was approved.
    - A money output is `{ amount: "15902.66", currency: "USD" }`.
 8. **`result.json` on disk has outputs masked by sensitivity.** The caller (and the CLI's stdout) gets the real values. Evidence must hold no unmasked sensitive value, and this file is copied into `evidence/` later.
-9. **Outcome signatures are in the fixture but not yet matched.** Until M8, `memberId=99999` returns `failure: unexpected_state` at `search` instead of `business_outcome: MEMBER_NOT_FOUND`.
+9. **M8 was started before M3 was finished**, at the developer's request. Only the `latencyMs` fault and `/__admin/faults` were added ahead of M3, because they show no screen. Every other fault waits for its screen's mockup to be approved.
+10. **M8 design choices:**
+   - **State race order:** profile conditions, then the step's outcomes, then its expected state, all checked against one observation. `Surface` gained `firstMatch(signatures)` for this; separate `matches` calls would compare different moments of the screen.
+   - **Profile conditions are a union by disposition.** `session_expired` recovers by clicking "Sign in again" and then `restart_if_no_side_effects`, which signs in through the profile and starts from step 1. The design's `handler: "login"` could not work: after expiry the nav frame still shows "Member Inquiry", so the authenticated check passes and login is skipped. `maxAttempts` defaults to 2. The profile gained `timeouts.slowLoadMs` (3000).
+   - **`escalate` without an operator channel returns `failure: escalation_timeout`** (no operator answered within the time allowed, which is zero here). M10 routes it to the intervention channel instead.
+   - **A `fail` condition returns `app_error`.** When a target cannot be resolved, replay first checks the profile conditions, so an error page reads as `app_error`, not drift.
+   - **`safeToRetry` means retrying cannot duplicate a side effect *and* might succeed.** It is false for `invalid_input`, `policy_denied`, `target_unresolved`, `target_ambiguous` and `extraction_invalid`. The table is in `src/outcome/result.ts`.
+   - **`observed` on `unexpected_state` lists the states that were checked**, never screen content.
+   - A step's `retry` budget applies only to failures from the step itself (unresolved, ambiguous, unexpected state, extraction). A disposition's decision is final.
 
 ## Known issues
 
-- Balances are visible in failure screenshots and observation dumps. The profile masks only Account No and SSN, as designed. Decide in M8 whether `financial` values should be masked in evidence.
+- **Open decision (PDF §3.4): names and balances are visible in failure screenshots and observation dumps.** The profile masks only Account No and SSN. Label-geometry masks over-reach: masking under "Name" on the profile also hides the Accounts table. Options: mask the targets the artifact extracts into sensitive outputs; add per-screen mask rules; or accept it for synthetic data and say so in the report.
+- **Open decision:** rename `frame` to `scope` (see the audit of 2026-10-05). It touches `AGENTS.md`'s locked policy wording.
+- **Open decision:** the path allowlist is a deny list (`denyPaths`). An exact `allowPaths` list would fail closed.
+- The scrub backstop replaces digit-only inputs anywhere in a log string, so it could alter a hash or run id that happens to contain one. Low probability; primary redaction does not depend on it.
 - The run-log scrub backstop ignores values shorter than four characters, to avoid mangling ordinary text. Primary redaction does not depend on it.
-- `profile.conditions`, `profile.risk`, `profile.versionProbe` and the `version_mismatch` and `slow_load` warnings are validated data with no behaviour yet (M8, M11).
+- `profile.risk`, `profile.versionProbe` and the `version_mismatch` warning are validated data with no behaviour yet (M11, M8 drift signals).
+- Restarting after session expiry checks whether an irreversible step was dispatched, but no artifact can dispatch one until M9. That branch is untested until then.
+- An expected state that already holds before the action, on the old screen, would be matched at once. The fixture's expected states are all absent before their action. M9's artifact must keep that property, or the race needs a "screen changed" guard.
 - Each observation makes about a dozen round trips per frame. Fine locally (a full replay takes about one second); revisit if the latency fault makes polling slow.
 
 ## Spike findings

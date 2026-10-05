@@ -90,6 +90,7 @@ interface Surface {
   resolve(target: Target): Promise<Resolution>;    // { kind: "unique", handle, strategyIndex } | { kind: "ambiguous", count } | { kind: "none" }
   act(handle: Handle, action: Action): Promise<void>;
   matches(signature: Signature): Promise<boolean>;
+  firstMatch(signatures: Signature[]): Promise<number | undefined>; // ordered, one observation
   screenshot(opts: { mask: MaskRule[] }): Promise<Buffer>;
 }
 ```
@@ -219,7 +220,7 @@ Per step:
 2. Policy check for this action and risk.
 3. Resolve the target, waiting up to the timeout.
 4. Act through the guarded executor.
-5. **State race:** wait for the first match among the step's `expect`, any outcome whose `afterSteps` includes this step, and any profile condition.
+5. **State race:** wait for the first match among any profile condition, any outcome whose `afterSteps` includes this step, and the step's `expect`, checked in that order against one observation. If the target in step 3 cannot be resolved, check the profile conditions before reporting drift.
 6. Act on the disposition of whatever matched (table below). A timeout with nothing matched is `unexpected_state`.
 
 | Observed | Disposition | Effect |
@@ -227,15 +228,17 @@ Per step:
 | Step's `expect` | continue | next step |
 | Outcome signature | outcome | return `business_outcome` |
 | `system_notice` | recover | acknowledge, re-wait for `expect` |
-| `session_expired` | recover | re-login and restart from step 1, only if no irreversible step was dispatched; otherwise `outcome_unknown` |
+| `session_expired` | recover | click "Sign in again", re-login and restart from step 1, only if no irreversible step was dispatched; otherwise `outcome_unknown` |
 | Slow load | (none) | waiting is built in; past a soft threshold adds a `slow_load` warning |
-| `supervisor_override` | escalate | takeover request |
+| `supervisor_override` | escalate | takeover request; with no operator channel, `failure: escalation_timeout` |
 | Irreversible step without unattended approval | escalate | approval request |
 | `app_error` | fail | `failure: app_error` |
 | Nothing matched | fail | `failure: unexpected_state` |
 | Irreversible step dispatched, result undetermined | escalate | `unknown_outcome` request |
 
-Recoveries are bounded (default two attempts per condition per run); exceeding the bound is `recovery_exhausted`.
+Recoveries are bounded (default two attempts per condition per run); exceeding the bound is `recovery_exhausted`. A step's `retry` budget covers only failures from the step itself; a disposition's decision is final.
+
+`safeToRetry` is true only when nothing can have been committed and the category is not fixed by the inputs, the policy, the artifact or a human (`src/outcome/result.ts`).
 
 ### Result contract
 
@@ -340,10 +343,11 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
     { "id": "system_notice",       "disposition": "recover",  "signature": { "textPresent": "System Notice" },
       "handler": { "click": { "role": "button", "name": "Acknowledge" } }, "resume": "continue", "maxAttempts": 2 },
     { "id": "session_expired",     "disposition": "recover",  "signature": { "textPresent": "Your session has expired" },
-      "handler": "login", "resume": "restart_if_no_side_effects", "maxAttempts": 1 },
+      "handler": { "click": { "role": "link", "name": "Sign in again" } }, "resume": "restart_if_no_side_effects", "maxAttempts": 1 },
     { "id": "app_error",           "disposition": "fail",     "signature": { "textPresent": "Application Error" } },
     { "id": "supervisor_override", "disposition": "escalate", "signature": { "textPresent": "Supervisor Override Required" } }
   ],
+  "timeouts": { "slowLoadMs": 3000 },
   "risk": { "safeControls": ["Search", "View", "Continue", "Acknowledge", "Member Inquiry", "Open Sub-Account"],
             "commitControls": ["Confirm"] },
   "formats": { "money": "$#,##0.00", "date": "MM/DD/YYYY" },

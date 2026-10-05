@@ -46,5 +46,10 @@ export interface Surface {
   resolve(target: Target): Promise<Resolution>;
   act(handle: Handle, action: SurfaceAction): Promise<void>;
   matches(signature: Signature): Promise<boolean>;
+  /**
+   * The index of the first signature that holds, all checked against one observation, so a
+   * state race has a single, ordered answer for one moment of the screen.
+   */
+  firstMatch(signatures: Signature[]): Promise<number | undefined>;
   screenshot(opts: { mask: MaskRule[] }): Promise<Buffer>;
 }
