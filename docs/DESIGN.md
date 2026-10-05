@@ -2,6 +2,8 @@
 
 The detailed design behind the rules in `AGENTS.md`. Schemas here are conceptual: field names and shapes are the intent, and the Zod definitions written in milestone 4 become the authority once they exist. If implementation needs a different shape, change it deliberately and update this file.
 
+**The Zod definitions now exist** (`src/artifact/schema.ts`, `src/profile/schema.ts`, `src/outcome/result.ts`, `src/surface/target.ts`) and are the authority. Where they differ from the examples below, the differences and reasons are listed under "Deviations from the plan" in `docs/IMPLEMENTATION_PLAN.md`.
+
 Nine diagrams in `docs/diagrams/` (exported from the Paper file "fake banking app") show the same design visually: `01-system-architecture`, `02-discovery-lifecycle`, `03-deterministic-replay`, `04-artifact-anatomy`, `05-result-taxonomy`, `06-safety-and-policy-gate`, `07-human-handoff`, `08-coreserv-workflows`, `09-surfaces-and-layering`. If a diagram and this file disagree, this file wins.
 
 ## 1. Demo application: CoreServ 7.2
