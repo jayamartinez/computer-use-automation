@@ -172,4 +172,4 @@ E7 needs a person at the keyboard; a short screen recording is welcome. Everythi
 
 | Date | Milestone | Commit | Notes |
 |---|---|---|---|
-| 2026-10-05 | M0 | (uncommitted) | Design documents and skeleton created |
+| 2026-10-05 | M0 | ca7133a | Design documents, diagrams and skeleton |
