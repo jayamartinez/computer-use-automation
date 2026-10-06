@@ -144,6 +144,7 @@ describe("profile and tenant binding", () => {
       "recover",
       "fail",
       "escalate",
+      "recover",
     ]);
     expect(tenant.policy.paths).toEqual(["/", "/cs.do"]);
     const withPaths = (paths: string[]) =>

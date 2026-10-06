@@ -2,7 +2,7 @@
   "product": "coreserv",
   "versions": "7.x",
   "surface": "web",
-  "scopes": ["banner", "nav", "workarea"],
+  "scopes": ["banner", "nav", "workarea", "dialog"],
   "versionProbe": {
     "scope": ["banner"],
     "pattern": "CoreServ (\\d+\\.\\d+)"
@@ -123,6 +123,29 @@
         "scope": ["workarea"],
         "textPresent": "Supervisor Override Required"
       }
+    },
+    {
+      "id": "password_expiry_alert",
+      "disposition": "recover",
+      "signature": {
+        "scope": ["dialog"],
+        "textPresent": "password expires"
+      },
+      "handler": {
+        "click": {
+          "scope": ["dialog"],
+          "role": "button",
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "OK"
+            }
+          ],
+          "rationale": "An informational alert; OK is its only button and only dismisses the message."
+        }
+      },
+      "resume": "continue",
+      "maxAttempts": 2
     }
   ],
   "timeouts": {

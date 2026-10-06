@@ -72,9 +72,11 @@ Data read by several components: app profile, tenant binding.
 **Done when:** the fixture and profile validate; invalid artifacts are rejected with useful messages (unknown target reference, undeclared input in a template, irreversible step with retries, output with no source step); schema tests pass.
 
 ### M5. Surface — `feat(surface): Surface interface, PlaywrightSurface, FakeSurface`
-- [ ] Observation across frames; `resolve` for `role_name`, `anchor`, `table_cell`; `act`; `matches`; masked screenshots; native dialog reporting; `FakeSurface`.
+- [x] Observation across frames; `resolve` for `role_name`, `anchor`, `table_cell`; `act`; `matches`; masked screenshots; native dialog reporting; `FakeSurface`.
 
-**Partly done (acd90eb).** Everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come after M3 and M9 (D17): `feat(surface): native dialogs as a dialog scope`, then `feat(replay): known dialogs as profile conditions`. Dialog handling is done when the `dialog` fault on the profile is recovered by `password_expiry_alert` during a real-app replay, and an unknown dialog fails as `unexpected_state` without being accepted.
+**Done (2026-10-05).** acd90eb, then native dialogs (D17) after M9. An open dialog blocks every frame (evaluation and screenshots hang until it is answered), so the surface races its frame reads against a dialog opening and reports only the dialog while one is open. Evidence for a failure under a dialog has the observation dump but no screenshot (`evidence.screenshot` is optional for this reason). `tests/integration/dialog.test.ts` covers the surface, the known alert on both capabilities and an unknown dialog.
+
+**Before:** everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come after M3 and M9 (D17): `feat(surface): native dialogs as a dialog scope`, then `feat(replay): known dialogs as profile conditions`. Dialog handling is done when the `dialog` fault on the profile is recovered by `password_expiry_alert` during a real-app replay, and an unknown dialog fails as `unexpected_state` without being accepted.
 
 **Done when:** integration tests against the demo app resolve every target in the lookup fixture uniquely, report `ambiguous` and `none` correctly, and resolve the same targets with 300 ms of injected latency.
 

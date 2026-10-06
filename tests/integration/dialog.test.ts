@@ -1,13 +1,25 @@
 // Native dialogs on the real app: the surface reports an open dialog as the `dialog` container,
 // never answers it by itself, and answers it only when its button is clicked.
 
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Artifact } from "../../src/artifact/schema.ts";
 import { renderDeep } from "../../src/artifact/template.ts";
+import { ReplayResultSchema } from "../../src/outcome/result.ts";
+import type { Profile } from "../../src/profile/schema.ts";
+import { runReplay } from "../../src/replay/run.ts";
 import { PlaywrightSurface } from "../../src/surface/playwright/playwright-surface.ts";
 import type { Target } from "../../src/surface/target.ts";
 import { DIALOG_SCOPE, type SurfaceAction } from "../../src/surface/types.ts";
 import { OPERATOR, startTestApp } from "../support/demo-app.ts";
-import { coreservProfile } from "../support/fixtures.ts";
+import {
+  coreservProfile,
+  lakesideAt,
+  lookupArtifact,
+  subaccountArtifact,
+  tempDir,
+  withTimeouts,
+} from "../support/fixtures.ts";
 
 let app: Awaited<ReturnType<typeof startTestApp>>;
 
@@ -94,5 +106,74 @@ describe("PlaywrightSurface and native dialogs", () => {
     } finally {
       await surface.close();
     }
+  });
+});
+
+describe("replay and native dialogs against the real demo app", () => {
+  async function run(artifact: Artifact, inputs: Record<string, string>, profile?: Profile) {
+    const result = await runReplay({
+      artifact: { ...artifact, status: "approved" },
+      inputs,
+      profile: profile ?? (await coreservProfile()),
+      tenant: await lakesideAt(app.url),
+      secrets: OPERATOR,
+      runsDir: tempDir(),
+      allowIrreversible: true,
+    });
+    ReplayResultSchema.parse(result);
+    return { result, log: readFileSync(result.log, "utf8") };
+  }
+
+  it("clicks OK on the known password-expiry alert and reports one recovery", async () => {
+    await arm({ dialog: "profile" });
+    const { result, log } = await run(await lookupArtifact(), { memberId: "10077" });
+    expect(result).toMatchObject({
+      status: "success",
+      outputs: { savingsBalance: { amount: "15902.66", currency: "USD" } },
+      recoveries: [{ condition: "password_expiry_alert", atStep: "open_member", attempts: 1 }],
+    });
+    expect(log).toContain("password_expiry_alert.handler");
+  });
+
+  it("recovers from the alert on the write path and still opens the account", async () => {
+    await fetch(`${app.url}/__admin/reset`, { method: "POST" });
+    await arm({ dialog: "subaccount" });
+    const { result } = await run(await subaccountArtifact(), {
+      memberId: "10077",
+      accountType: "Club Savings",
+      nickname: "Rainy Day",
+      openingDeposit: "50",
+    });
+    expect(result).toMatchObject({
+      status: "success",
+      outputs: { newAccountNumber: "4000-10077-03" },
+      recoveries: [{ condition: "password_expiry_alert", atStep: "open_form", attempts: 1 }],
+    });
+  });
+
+  it("never accepts an unknown dialog: unexpected_state with the dialog in evidence", async () => {
+    const profile = await coreservProfile();
+    const withoutAlert: Profile = {
+      ...profile,
+      conditions: profile.conditions.filter((c) => c.id !== "password_expiry_alert"),
+    };
+    await arm({ dialog: "profile" });
+    const { result, log } = await run(
+      withTimeouts(await lookupArtifact(), 800),
+      { memberId: "10077" },
+      withoutAlert,
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      stepsCompleted: 3,
+      failure: { category: "unexpected_state", stepId: "open_member", sideEffects: "none" },
+    });
+    if (result.status !== "failure") throw new Error("unreachable");
+    // No screenshot can be taken while the dialog blocks the page; the dump shows the dialog.
+    expect(result.failure.evidence!.screenshot).toBeUndefined();
+    expect(readFileSync(result.failure.evidence!.observation, "utf8")).toContain(
+      "password expires",
+    );
+    expect(log).not.toMatch(/"target":"[^"]*handler"/);
   });
 });

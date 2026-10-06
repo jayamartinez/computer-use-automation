@@ -191,7 +191,8 @@ describe("replay: lookup_balance against the fake surface", () => {
     if (result.status !== "failure") throw new Error("unreachable");
     expect(result.failure.observed).toBe(
       "No known state appeared; checked condition system_notice, condition session_expired, " +
-        "condition app_error, condition supervisor_override, expected state",
+        "condition app_error, condition supervisor_override, condition password_expiry_alert, " +
+        "expected state",
     );
   });
 
