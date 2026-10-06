@@ -30,7 +30,7 @@ export type SurfaceAction =
 export type Signature =
   | { textPresent: string; scope?: string[] }
   | { resolvable: Target }
-  | { textEquals: { target: Target; value: string } }
+  | { textEquals: { target: Target; value: string; as?: "money" } }
   | { valueEquals: { target: Target; value: string } }
   | { all: Signature[] }
   | { any: Signature[] };

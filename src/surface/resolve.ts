@@ -148,6 +148,13 @@ function byTableCell(
   );
 }
 
+/** "$1,234.50", "1234.5" and "1234.50" all read as "1234.50"; anything else is not money. */
+function moneyAmount(text: string): string | undefined {
+  const match = /^\$?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/.exec(normalize(text));
+  if (!match) return undefined;
+  return `${match[1]!.replaceAll(",", "")}.${(match[2] ?? "").padEnd(2, "0")}`;
+}
+
 export function firstMatching(
   observation: Observation,
   signatures: Signature[],
@@ -174,11 +181,14 @@ export function matchesSignature(observation: Observation, signature: Signature)
     return resolveTarget(elements, signature.resolvable).kind === "unique";
   }
   if ("textEquals" in signature) {
-    const found = resolveTarget(elements, signature.textEquals.target);
-    return (
-      found.kind === "unique" &&
-      normalize(found.element.text) === normalize(signature.textEquals.value)
-    );
+    const { target, value, as } = signature.textEquals;
+    const found = resolveTarget(elements, target);
+    if (found.kind !== "unique") return false;
+    if (as === "money") {
+      const shown = moneyAmount(found.element.text);
+      return shown !== undefined && shown === moneyAmount(value);
+    }
+    return normalize(found.element.text) === normalize(value);
   }
   const found = resolveTarget(elements, signature.valueEquals.target);
   return found.kind === "unique" && found.element.value === signature.valueEquals.value;

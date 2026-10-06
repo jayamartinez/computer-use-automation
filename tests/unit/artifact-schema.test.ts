@@ -6,7 +6,14 @@ import { render, renderDeep } from "../../src/artifact/template.ts";
 import { ReplayResultSchema } from "../../src/outcome/result.ts";
 import { resolveSecrets } from "../../src/profile/load.ts";
 import { TenantSchema } from "../../src/profile/schema.ts";
-import { coreservProfile, FIXTURE_PATH, lakeside, lookupArtifact } from "../support/fixtures.ts";
+import {
+  coreservProfile,
+  FIXTURE_PATH,
+  lakeside,
+  lookupArtifact,
+  SUBACCOUNT_PATH,
+  subaccountArtifact,
+} from "../support/fixtures.ts";
 
 // A fresh, mutable copy of the fixture for each rejection case.
 const draft = () => JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
@@ -53,6 +60,32 @@ describe("artifact schema", () => {
     const text = messages(data);
     expect(text).toContain("must never be retried");
     expect(text).toContain('onTimeout: "outcome_unknown"');
+  });
+
+  it("accepts the write-path fixture: select, assert without a target, money comparison", async () => {
+    const artifact = await subaccountArtifact();
+    expect(artifact.requires.maxRisk).toBe("irreversible");
+    const kinds = artifact.steps.map((s) => s.action);
+    expect(kinds).toContain("select");
+    expect(kinds[kinds.indexOf("assert") + 1]).toBe("click");
+    const assertStep = artifact.steps.find((s) => s.action === "assert")!;
+    expect("target" in assertStep).toBe(false);
+  });
+
+  it("rejects an irreversible step that does not follow an assert", () => {
+    const data = JSON.parse(readFileSync(SUBACCOUNT_PATH, "utf8"));
+    data.steps.splice(
+      data.steps.findIndex((s: { id: string }) => s.id === "assert_review"),
+      1,
+    );
+    expect(messages(data)).toContain("must come immediately after an assert step");
+  });
+
+  it("rejects an assert whose check names an unknown target", () => {
+    const data = JSON.parse(readFileSync(SUBACCOUNT_PATH, "utf8"));
+    const assertStep = data.steps.find((s: { id: string }) => s.id === "assert_review");
+    assertStep.check = { cellEquals: { target: "nowhere", value: "x" } };
+    expect(messages(data)).toContain('Unknown target reference "nowhere"');
   });
 
   it("rejects an output that no extract step produces", () => {
@@ -169,10 +202,19 @@ describe("replay result contract", () => {
       observed: "none",
       sideEffects: "none",
       safeToRetry: true,
+      outputsVerified: false,
     };
     expect(ReplayResultSchema.safeParse({ ...common, status: "failure", failure }).success).toBe(
       true,
     );
+    // A failure can never claim verified outputs, even with a committed side effect.
+    expect(
+      ReplayResultSchema.safeParse({
+        ...common,
+        status: "failure",
+        failure: { ...failure, sideEffects: "committed", outputsVerified: true },
+      }).success,
+    ).toBe(false);
     const { safeToRetry: _dropped, ...incomplete } = failure;
     expect(
       ReplayResultSchema.safeParse({ ...common, status: "failure", failure: incomplete }).success,

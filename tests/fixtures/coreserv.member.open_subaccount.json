@@ -1,0 +1,517 @@
+{
+  "schemaVersion": 1,
+  "id": "coreserv.member.open_subaccount",
+  "version": "1.0.0",
+  "status": "draft",
+  "contentHash": "sha256:0da3f31197372c2fe75fc65d704c4690cdf508d76196acc54690cbbeb16b1086",
+  "description": "Open a sub-account for a member, funded from their Savings, and return the new account number and the confirmation reference.",
+  "app": {
+    "product": "coreserv",
+    "recordedVersion": "7.2",
+    "surface": "web"
+  },
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "sensitivity": "identifier",
+      "description": "Member number",
+      "pattern": "^\\d{5}$",
+      "example": "10077"
+    },
+    "accountType": {
+      "type": "enum",
+      "sensitivity": "none",
+      "description": "Kind of sub-account to open",
+      "values": ["Club Savings", "Money Market", "Certificate"]
+    },
+    "nickname": {
+      "type": "string",
+      "sensitivity": "none",
+      "description": "Name the member gives the sub-account",
+      "pattern": "^[A-Za-z0-9 ]{1,20}$",
+      "example": "Vacation Fund"
+    },
+    "openingDeposit": {
+      "type": "money",
+      "sensitivity": "financial",
+      "description": "Amount moved from Savings into the new sub-account",
+      "currency": "USD",
+      "example": "500.00"
+    }
+  },
+  "outputs": {
+    "newAccountNumber": {
+      "type": "string",
+      "sensitivity": "account_number",
+      "description": "Account number of the new sub-account",
+      "pattern": "^4000-\\d{5}-\\d{2}$",
+      "fromStep": "read_account"
+    },
+    "confirmationRef": {
+      "type": "string",
+      "sensitivity": "none",
+      "description": "Reference to give the member; also what reconciliation looks up",
+      "pattern": "^OSA-\\d{4}-\\d{4}$",
+      "fromStep": "read_reference"
+    }
+  },
+  "targets": {
+    "member_inquiry_link": {
+      "scope": ["nav"],
+      "role": "link",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "Member Inquiry"
+        }
+      ],
+      "rationale": "A named link in the navigation frame; the name is the function an operator looks for."
+    },
+    "member_number_field": {
+      "scope": ["workarea"],
+      "role": "textbox",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Member Number",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "The input has no accessible name; the adjacent label cell is the only stable handle."
+    },
+    "search_button": {
+      "scope": ["workarea"],
+      "role": "button",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "Search"
+        }
+      ],
+      "rationale": "Named by its value attribute."
+    },
+    "view_link": {
+      "scope": ["workarea"],
+      "role": "link",
+      "strategies": [
+        {
+          "kind": "table_cell",
+          "headers": ["Member No", "Name"],
+          "row": {
+            "column": "Member No",
+            "equals": "{{inputs.memberId}}"
+          },
+          "column": "Action"
+        }
+      ],
+      "rationale": "The row is keyed by the templated member number, never by position or by the member's name."
+    },
+    "open_subaccount_button": {
+      "scope": ["workarea"],
+      "role": "button",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "Open Sub-Account"
+        }
+      ],
+      "rationale": "The profile's only action button, named by its value."
+    },
+    "account_type_select": {
+      "scope": ["workarea"],
+      "role": "combobox",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Account Type *",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Unlabeled select; the label cell to its left is the handle. The asterisk is part of the visible label."
+    },
+    "nickname_field": {
+      "scope": ["workarea"],
+      "role": "textbox",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Nickname *",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
+    },
+    "deposit_field": {
+      "scope": ["workarea"],
+      "role": "textbox",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Opening Deposit *",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
+    },
+    "continue_button": {
+      "scope": ["workarea"],
+      "role": "button",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "Continue"
+        }
+      ],
+      "rationale": "Named by its value. Continue posts nothing; the app validates and moves on."
+    },
+    "member_no_cell": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Member No",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Identity read-back on Review and Confirmation: the value cell beside the Member No label."
+    },
+    "review_account_type": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Account Type",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Review value cell beside its label; read back before the irreversible step."
+    },
+    "review_nickname": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Nickname",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Review value cell beside its label; read back before the irreversible step."
+    },
+    "review_deposit": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Opening Deposit",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Review value cell beside its label; compared as money, since the screen formats it."
+    },
+    "confirm_button": {
+      "scope": ["workarea"],
+      "role": "button",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "Confirm"
+        }
+      ],
+      "rationale": "The commit control. Named by its value; it exists only on Review, which makes it the Review's expected state too."
+    },
+    "new_account_cell": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "New Account No",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Confirmation value cell beside its label."
+    },
+    "reference_cell": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Confirmation Ref",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Confirmation value cell beside its label."
+    }
+  },
+  "steps": [
+    {
+      "id": "open_inquiry",
+      "intent": "Open the member inquiry screen",
+      "risk": "read",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 1
+      },
+      "target": "member_inquiry_link",
+      "action": "click",
+      "expect": {
+        "resolvable": "member_number_field"
+      }
+    },
+    {
+      "id": "fill_member",
+      "intent": "Enter the member number",
+      "risk": "reversible",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "member_number_field",
+      "action": "fill",
+      "value": "{{inputs.memberId}}",
+      "expect": {
+        "valueEquals": "{{inputs.memberId}}"
+      }
+    },
+    {
+      "id": "search",
+      "intent": "Run the search",
+      "risk": "read",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 0
+      },
+      "target": "search_button",
+      "action": "click",
+      "expect": {
+        "resolvable": "view_link"
+      }
+    },
+    {
+      "id": "open_member",
+      "intent": "Open the member's profile",
+      "risk": "read",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 0
+      },
+      "target": "view_link",
+      "action": "click",
+      "expect": {
+        "resolvable": "open_subaccount_button"
+      }
+    },
+    {
+      "id": "open_form",
+      "intent": "Open the sub-account form",
+      "risk": "read",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 0
+      },
+      "target": "open_subaccount_button",
+      "action": "click",
+      "expect": {
+        "resolvable": "account_type_select"
+      }
+    },
+    {
+      "id": "select_type",
+      "intent": "Choose the account type",
+      "risk": "reversible",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "account_type_select",
+      "action": "select",
+      "value": "{{inputs.accountType}}",
+      "expect": {
+        "valueEquals": "{{inputs.accountType}}"
+      }
+    },
+    {
+      "id": "fill_nickname",
+      "intent": "Enter the nickname",
+      "risk": "reversible",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "nickname_field",
+      "action": "fill",
+      "value": "{{inputs.nickname}}",
+      "expect": {
+        "valueEquals": "{{inputs.nickname}}"
+      }
+    },
+    {
+      "id": "fill_deposit",
+      "intent": "Enter the opening deposit",
+      "risk": "reversible",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "deposit_field",
+      "action": "fill",
+      "value": "{{inputs.openingDeposit}}",
+      "expect": {
+        "valueEquals": "{{inputs.openingDeposit}}"
+      }
+    },
+    {
+      "id": "continue_to_review",
+      "intent": "Submit the form for review; nothing is posted yet",
+      "risk": "reversible",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 0
+      },
+      "target": "continue_button",
+      "action": "click",
+      "expect": {
+        "resolvable": "confirm_button"
+      }
+    },
+    {
+      "id": "assert_review",
+      "intent": "Check that Review shows exactly what was asked for before committing",
+      "risk": "read",
+      "timeoutMs": 3000,
+      "retry": {
+        "max": 0
+      },
+      "action": "assert",
+      "check": {
+        "all": [
+          {
+            "cellEquals": {
+              "target": "member_no_cell",
+              "value": "{{inputs.memberId}}"
+            }
+          },
+          {
+            "cellEquals": {
+              "target": "review_account_type",
+              "value": "{{inputs.accountType}}"
+            }
+          },
+          {
+            "cellEquals": {
+              "target": "review_nickname",
+              "value": "{{inputs.nickname}}"
+            }
+          },
+          {
+            "cellEquals": {
+              "target": "review_deposit",
+              "value": "{{inputs.openingDeposit}}",
+              "as": "money"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "confirm",
+      "intent": "Open the account and post the deposit",
+      "risk": "irreversible",
+      "timeoutMs": 15000,
+      "retry": {
+        "max": 0
+      },
+      "onTimeout": "outcome_unknown",
+      "target": "confirm_button",
+      "action": "click",
+      "expect": {
+        "textPresent": "Sub-account opened",
+        "scope": ["workarea"]
+      }
+    },
+    {
+      "id": "read_account",
+      "intent": "Read the new account number",
+      "risk": "read",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "new_account_cell",
+      "action": "extract",
+      "output": "newAccountNumber"
+    },
+    {
+      "id": "read_reference",
+      "intent": "Read the confirmation reference",
+      "risk": "read",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "reference_cell",
+      "action": "extract",
+      "output": "confirmationRef"
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "afterSteps": ["search"],
+      "signature": {
+        "textPresent": "No members match",
+        "scope": ["workarea"]
+      }
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "afterSteps": ["open_member"],
+      "signature": {
+        "textPresent": "Access restricted",
+        "scope": ["workarea"]
+      }
+    },
+    {
+      "code": "INSUFFICIENT_FUNDS",
+      "afterSteps": ["continue_to_review"],
+      "signature": {
+        "textPresent": "Opening deposit exceeds available balance",
+        "scope": ["workarea"]
+      }
+    }
+  ],
+  "conditions": "profile",
+  "checkpoint": {
+    "all": [
+      {
+        "textPresent": "Sub-account opened",
+        "scope": ["workarea"]
+      },
+      {
+        "cellEquals": {
+          "target": "member_no_cell",
+          "value": "{{inputs.memberId}}"
+        }
+      },
+      {
+        "outputParsed": "newAccountNumber"
+      },
+      {
+        "outputParsed": "confirmationRef"
+      }
+    ]
+  },
+  "requires": {
+    "actions": ["click", "fill", "select", "extract", "assert"],
+    "maxRisk": "irreversible",
+    "scopes": ["nav", "workarea"]
+  },
+  "provenance": {
+    "author": "hand-written fixture; the specification the compiler must reproduce"
+  }
+}

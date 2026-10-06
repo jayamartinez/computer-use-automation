@@ -45,6 +45,8 @@ export type ReplayOptions = {
 };
 
 type StepRef = { id: string; intent: string };
+/** A step that acts on a target: every kind except `assert`. */
+type ActingStep = Exclude<Step, { action: "assert" }>;
 type Problem = Pick<Failure, "category" | "expected" | "observed"> & {
   step: StepRef;
   screen: boolean;
@@ -123,6 +125,7 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
       observed: p.observed,
       sideEffects,
       safeToRetry: safeToRetry(p.category, sideEffects),
+      outputsVerified: false,
       ...(evidence ? { evidence } : {}),
     };
     log.write("run_end", { status: "failure", failure });
@@ -175,12 +178,18 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
     if ("any" in signature) return { any: signature.any.map(bind) };
     if ("resolvable" in signature) return { resolvable: target(signature.resolvable) };
     if ("cellEquals" in signature) {
-      const { target: name, value } = signature.cellEquals;
-      return { textEquals: { target: target(name), value: renderDeep(value, scopes) } };
+      const { target: name, value, as } = signature.cellEquals;
+      return {
+        textEquals: {
+          target: target(name),
+          value: renderDeep(value, scopes),
+          ...(as ? { as } : {}),
+        },
+      };
     }
     return renderDeep(signature, scopes);
   };
-  const bindExpect = (expect: Expect, step: Step): Signature =>
+  const bindExpect = (expect: Expect, step: ActingStep): Signature =>
     "valueEquals" in expect
       ? {
           valueEquals: {
@@ -286,6 +295,10 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
     }
   };
 
+  /** What a step waits for: its expected state, or for an `assert`, its check. */
+  const expected = (step: Exclude<Step, { action: "extract" }>): Signature =>
+    step.action === "assert" ? bind(step.check) : bindExpect(step.expect, step);
+
   /** The state race after an action: wait for the first known state and act on it. */
   const settle = async (step: Exclude<Step, { action: "extract" }>): Promise<StepEnd> => {
     const candidates: Candidate[] = [
@@ -301,7 +314,7 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
           code: outcome.code,
           signature: bind(outcome.signature),
         })),
-      { kind: "expect", signature: bindExpect(step.expect, step) },
+      { kind: "expect", signature: expected(step) },
     ];
     for (;;) {
       const hit = await executor.race(
@@ -312,7 +325,9 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
         return problem(
           step,
           "unexpected_state",
-          `The expected state ${JSON.stringify(step.expect)} within ${step.timeoutMs} ms`,
+          `The expected state ${JSON.stringify(
+            step.action === "assert" ? step.check : step.expect,
+          )} within ${step.timeoutMs} ms`,
           `No known state appeared; checked ${candidates.map(label).join(", ")}`,
         );
       }
@@ -338,6 +353,8 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
 
   /** One attempt at a step. Problems are returned, not thrown, so the step can be retried. */
   const attempt = async (step: Step): Promise<StepEnd> => {
+    // An assert acts on nothing; the state race over its check is the whole step.
+    if (step.action === "assert") return settle(step);
     for (;;) {
       const result = await executor.perform({
         epoch: executor.epoch,
@@ -348,7 +365,7 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
         target: target(step.target),
         risk: step.risk,
         // The log keeps the template, so a rendered input never reaches it.
-        ...(step.action === "fill"
+        ...(step.action === "fill" || step.action === "select"
           ? { value: { actual: renderDeep(step.value, scopes), logged: step.value } }
           : {}),
         timeoutMs: step.timeoutMs,

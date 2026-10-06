@@ -249,4 +249,32 @@ describe("signatures and masking", () => {
       JSON.stringify(maskObservation({ id: "o", fingerprint: "f", elements: elsewhere }, [rule])),
     ).toContain("Oyelaran");
   });
+
+  it("masks a whole text element whose label and value share it (`self`)", () => {
+    const banner = [el("text", "CoreServ 7.2", 0, 0), el("text", "Operator: teller01", 300, 0)];
+    const dump = JSON.stringify(
+      maskObservation({ id: "o", fingerprint: "f", elements: banner }, [
+        { label: "Operator:", where: "self" },
+      ]),
+    );
+    expect(dump).not.toContain("teller01");
+    expect(dump).toContain("CoreServ 7.2");
+  });
+
+  it("compares a cell as money when asked, and as text otherwise", () => {
+    const review = {
+      id: "o",
+      fingerprint: "f",
+      elements: [el("text", "Opening Deposit", 0, 0), el("cell", "$1,500.00", 100, 0)],
+    };
+    const cell = target("cell", { kind: "anchor", text: "Opening Deposit", relation: "right_of" });
+    const equals = (value: string, as?: "money") =>
+      matchesSignature(review, { textEquals: { target: cell, value, ...(as ? { as } : {}) } });
+    expect(equals("1500.00", "money")).toBe(true);
+    expect(equals("1500", "money")).toBe(true);
+    expect(equals("150.00", "money")).toBe(false);
+    expect(equals("abc", "money")).toBe(false);
+    expect(equals("1500.00")).toBe(false);
+    expect(equals("$1,500.00")).toBe(true);
+  });
 });
