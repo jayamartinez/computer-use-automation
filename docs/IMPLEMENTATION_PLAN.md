@@ -62,9 +62,9 @@ Data read by several components: app profile, tenant binding.
 ### M3. Demo app, write path and faults — `feat(app): sub-account flow, supervisor override, fault injection`
 - [ ] Sub-Account Form, Review, Confirmation; insufficient-funds rule; supervisor override above $2,500; System Notice, Session Expired, Application Error; fault endpoint including `commitThen500`.
 
-**Partly done.** System Notice, Session Expired and Application Error are built from the approved mockups (artboards 7 to 9), along with the `notice`, `expireSession`, `error500` and `latencyMs` faults. Still to do: the sub-account screens, the insufficient-funds rule, Supervisor Override, `commitThen500`, and a screen with a native dialog for M5. Each new screen needs a mockup approved first.
+**Partly done.** System Notice, Session Expired and Application Error are built from the approved mockups (artboards 7 to 9), along with the `notice`, `expireSession`, `error500` and `latencyMs` faults. Still to do, from the mockups approved on 2026-10-05 (artboards 10 to 16): the Open Sub-Account button, form, Review and Confirmation; the insufficient-funds rule; Supervisor Override; the `commitThen500` and `dialog` faults. Three commits: `feat(app): sub-account form, review and confirmation`, `feat(app): supervisor override screen`, `feat(app): commitThen500 and dialog faults`.
 
-**Done when:** every screen and branch in `docs/DESIGN.md` §1–2 is reachable by hand, and each fault can be switched on and observed.
+**Done when:** every screen and branch in `docs/DESIGN.md` §1–2 is reachable by hand, each fault can be switched on and observed, and no text from the Paper notes artboards appears in any rendered page.
 
 ### M4. Schemas — `feat(schema): artifact, profile, tenant binding and result contract`
 - [x] Zod schemas and derived types; artifact load/save with content hash; templating; the CoreServ profile and `lakeside` binding as data; a **hand-written** `lookup_balance` artifact in `tests/fixtures/`.
@@ -74,7 +74,7 @@ Data read by several components: app profile, tenant binding.
 ### M5. Surface — `feat(surface): Surface interface, PlaywrightSurface, FakeSurface`
 - [ ] Observation across frames; `resolve` for `role_name`, `anchor`, `table_cell`; `act`; `matches`; masked screenshots; native dialog reporting; `FakeSurface`.
 
-**Partly done (acd90eb).** Everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come with M3.
+**Partly done (acd90eb).** Everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come after M3 and M9 (D17): `feat(surface): native dialogs as a dialog scope`, then `feat(replay): known dialogs as profile conditions`. Dialog handling is done when the `dialog` fault on the profile is recovered by `password_expiry_alert` during a real-app replay, and an unknown dialog fails as `unexpected_state` without being accepted.
 
 **Done when:** integration tests against the demo app resolve every target in the lookup fixture uniquely, report `ambiguous` and `none` correctly, and resolve the same targets with 300 ms of injected latency.
 
@@ -108,12 +108,16 @@ Data read by several components: app profile, tenant binding.
 ### M9. Replay, write path — `feat(replay): open_subaccount, risk gate, unknown outcome`
 - [ ] Hand-written `open_subaccount` fixture; `select` and `assert` actions; irreversible gate; `outcome_unknown`.
 
-**Done when:** the flow opens a sub-account for 10077 and returns both outputs; an over-balance deposit returns `INSUFFICIENT_FUNDS`; without approval the run stops at Confirm with an approval request (or `policy_denied` when run non-interactively); with `commitThen500` the Confirm click is not repeated and the result is `outcome_unknown` with `sideEffects: "possible"`.
+Two commits: `feat(schema): select and assert steps, typed comparison, pre-commit rule` and `feat(replay): open_subaccount, risk gate, unknown outcome`.
+
+**Done when:** the flow opens a sub-account for 10077 and returns both outputs; an over-balance deposit returns `INSUFFICIENT_FUNDS`; without approval the run stops at Confirm with `policy_denied` when run non-interactively (the approval request arrives with M10's channel); with `commitThen500` the Confirm click is not repeated and the result is `outcome_unknown` with `sideEffects: "possible"`; a Review that does not match the inputs stops before Confirm.
 
 ### M10. Handoff — `feat(handoff): control state machine, intervention channel, human capture`
 - [ ] State machine and epoch; `InterventionChannel` with the file-and-terminal implementation; headed-browser takeover; human action capture; resync; unknown-outcome verdicts.
 
-**Done when:** a $3,000 deposit for 10077 pauses at Supervisor Override with a request containing capability, step, reason and a masked screenshot; a person enters the code in the same window and returns control; the run resumes and completes; the captured human actions are in the run log with no typed values; unit tests cover every transition, timeout, abort and a stale-epoch action using a scripted human.
+Two commits: `feat(handoff): control state machine and intervention channel` and `feat(handoff): headed takeover, human action capture, resync`.
+
+**Done when:** a $3,000 deposit for 10077 pauses at Supervisor Override with a request containing capability, step, reason and a masked screenshot; a person enters the code in the same window and returns control; the run resumes and completes; the captured human actions are in the run log with no typed values; unit tests cover every transition, timeout, abort and a stale-epoch action using a scripted human; approval and unknown-outcome verdicts (D19) produce the results in `docs/DESIGN.md` §10. Automated tests stand in for the person by acting on the same page outside the executor; the E7 evidence run needs a real person.
 
 ### M11. Discovery — `feat(discovery): capability request, LLM loop, typed trace`
 - [ ] Request schema; observation rendering for the model; action vocabulary with value references; `OpenRouterProvider`; `RecordedProvider`; stuck detection; trace writer.
@@ -201,10 +205,10 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
    - After a handler click, replay waits up to `slowLoadMs` for the condition to clear before waiting for the step's state again. Otherwise the old notice, still on screen while the next page loads, is matched again. A condition that is still there is counted as a repeat. The real-app notice test found this; the fake surface changes state instantly.
    - **Faults are armed on a screen and fire once** (`{"notice": "search"}`), instead of the planned time-based `sessionTtl`. Every scenario then reproduces exactly.
    - A step's `retry` budget applies only to failures from the step itself (unresolved, ambiguous, unexpected state, extraction). A disposition's decision is final.
+11. **Write-path design approved (2026-10-05)**, recorded as D16 (update) to D21: dialogs as a `dialog` scope; `assert` before every irreversible step; marking dispatch before acting; no tenant `irreversible` field; the "committed" verdict as a failure with `outputsVerified: false`; no re-run of an escalated step; member numbers and the operator ID masked; Paper notes kept out of the app. Work continues on `feat/write-path-handoff`, branched from the M8 head, in this order: M3, masking, M9, dialog handling, M10.
 
 ## Known issues
 
-- Member numbers stay visible in saved evidence (D16). Logs show them as `***77`.
 - The scrub backstop replaces digit-only inputs anywhere in a log string, so it could alter a hash or run id that happens to contain one. Low probability; primary redaction does not depend on it.
 - The run-log scrub backstop ignores values shorter than four characters, to avoid mangling ordinary text. Primary redaction does not depend on it.
 - `profile.risk`, `profile.versionProbe` and the `version_mismatch` warning are validated data with no behaviour yet (M11, M8 drift signals).

@@ -97,4 +97,35 @@ Short records of the decisions that shape this project. Each has the decision, t
 
 **Decision.** The profile's mask rules hide member names, account numbers and balances in every saved screenshot and observation dump. A rule names a visible label, the direction of its values (`below` a column header, `right_of` a form label), and optionally a `when` signature that limits it to one screen.
 **Why.** PDF §3.4 forbids persisting raw sensitive data. Evidence is copied into the repository, and even synthetic data should be handled the way real data would be. Without `when`, a label rule over-reaches: masking below "Name" on the profile also hides the Accounts table under it.
-**Cost.** Masks are geometric and hand-written per screen; a relabeled screen needs its rule updated. Member numbers stay visible in evidence (they are identifiers, shown last-two-digits in logs), so a reviewer can tell which run is which. The caller always receives unmasked outputs.
+**Cost.** Masks are geometric and hand-written per screen; a relabeled screen needs its rule updated. The caller always receives unmasked outputs.
+**Update (2026-10-05).** Member numbers are masked too, along with deposits, the available balance, the override amount, the Supervisor ID and the operator ID. Evidence is told apart by scenario folder and run id instead, and logs keep the `***77` form. A third mask position, `self`, hides a whole text element whose label and value share it ("Operator: teller01"); otherwise the operator ID, a credential reference, would sit in every screenshot and, from discovery on, be sent to the model.
+
+## D17. A native dialog is a container named `dialog`
+
+**Decision.** While a browser `alert`/`confirm`/`prompt` is open, the surface reports only the dialog, in scope `["dialog"]`: its message as text, its buttons as buttons. Clicking `OK` accepts and `Cancel` dismisses. Known dialogs are profile conditions with a click handler; any other one is `unexpected_state`. The demo fault raises a password-expiry `alert()` on a chosen screen.
+**Why.** PDF §3.3 names unexpected dialogs. Treating the dialog as one more container reuses targets, signatures, handlers and policy scopes with no schema change, and a desktop modal window maps onto it the same way. A `confirm()` on the Confirm button was rejected: it would split the irreversible step in two and test nothing unexpected.
+**Cost.** While a dialog is open the page behind it cannot be observed (it is blocked, as it is for a person). The tenant allowlist must list the `dialog` scope.
+
+## D18. Irreversible steps: read back, then dispatch once
+
+**Decision.** An irreversible step must follow an `assert` step, which runs again after any transfer of control. The step is marked dispatched before the surface acts. After dispatch, anything but the expected state or a listed outcome is `outcome_unknown`; the click is never repeated and the run never restarts. The tenant `irreversible` setting planned in the design was dropped: `maxRisk` already says whether a tenant allows writes.
+**Why.** Legacy apps have no idempotency key, and a confirmation that appears slowly is indistinguishable from one that never comes. Marking before acting means an exception mid-click cannot hide a commit.
+**Cost.** A transient error after Confirm always needs a person, even when retrying would have been harmless.
+
+## D19. A human "committed" verdict is still a failure
+
+**Decision.** When a person confirms that an action committed but the confirmation screen was never checkpointed, the result is `failure` with the category that triggered the request, `sideEffects: "committed"`, `safeToRetry: false` and `outputsVerified: false`. Every failure carries `outputsVerified: false`.
+**Why.** The capability's contract is outputs read from a checkpointed screen. A human verdict proves the side effect, not the outputs. The three fields together keep "definitely committed" distinguishable from "unknown" and "not committed" for the calling agent.
+**Cost.** The caller must look up the new account number itself.
+
+## D20. An escalated step is never run again after the handoff
+
+**Decision.** On return of control, resync accepts the step's expected state, one of its outcomes or a profile condition. It never re-runs the step whose result escalated.
+**Why.** Re-running Continue after a person cancelled the override would only show the override again, in a loop. The person's choice not to finish is respected, and the result says where the run stopped.
+**Cost.** A person who cancels by accident has to start a new run.
+
+## D21. Paper notes never reach the application
+
+**Decision.** Design notes live in separate "Notes (Paper only)" artboards under each mockup. The demo app renders only what is on the screen artboards, and a test checks that no note text appears in any rendered page.
+**Why.** Evidence is captured from rendered pages. Note text in the app would leak design reasoning into screenshots and give the model hints a real legacy app would never give.
+**Cost.** None.
