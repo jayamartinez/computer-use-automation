@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "id": "coreserv.member.lookup_balance",
+  "version": "1.0.0",
+  "status": "draft",
+  "contentHash": "sha256:a55ebce712d5284732af58c9f3a1429716cd2f9740296844b2636fee529a6c96",
+  "description": "Read a member's current savings balance.",
+  "app": { "product": "coreserv", "recordedVersion": "7.2", "surface": "web" },
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "pattern": "^\\d{5}$",
+      "sensitivity": "identifier",
+      "description": "Member number",
+      "example": "10042"
+    }
+  },
+  "outputs": {
+    "savingsBalance": {
+      "type": "money",
+      "currency": "USD",
+      "sensitivity": "financial",
+      "description": "Current balance of the member's Savings account",
+      "fromStep": "read_balance"
+    }
+  },
+  "targets": {
+    "member_inquiry_link": {
+      "scope": ["nav"],
+      "role": "link",
+      "strategies": [{ "kind": "role_name", "name": "Member Inquiry" }],
+      "rationale": "A named link in the navigation frame; the name is the function an operator looks for."
+    },
+    "member_number_field": {
+      "scope": ["workarea"],
+      "role": "textbox",
+      "strategies": [{ "kind": "anchor", "text": "Member Number", "relation": "right_of" }],
+      "rationale": "The input has no accessible name; the adjacent label cell is the only stable handle."
+    },
+    "search_button": {
+      "scope": ["workarea"],
+      "role": "button",
+      "strategies": [{ "kind": "role_name", "name": "Search" }],
+      "rationale": "Named by its value attribute. No second strategy: the button sits under the inputs, not under a label, so an anchor would not be unique."
+    },
+    "view_link": {
+      "scope": ["workarea"],
+      "role": "link",
+      "strategies": [
+        {
+          "kind": "table_cell",
+          "headers": ["Member No", "Name"],
+          "row": { "column": "Member No", "equals": "{{inputs.memberId}}" },
+          "column": "Action"
+        }
+      ],
+      "rationale": "The row is keyed by the templated member number, never by position or by the member's name."
+    },
+    "savings_balance_cell": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "table_cell",
+          "headers": ["Type", "Balance"],
+          "row": { "column": "Type", "equals": "Savings" },
+          "column": "Balance"
+        }
+      ],
+      "rationale": "Addressed by header and row key, never by position: Savings is not the first row."
+    },
+    "profile_member_no": {
+      "scope": ["workarea"],
+      "role": "cell",
+      "strategies": [{ "kind": "anchor", "text": "Member No", "relation": "right_of" }],
+      "rationale": "Identity read-back: the value cell beside the Member No label on the profile."
+    }
+  },
+  "steps": [
+    {
+      "id": "open_inquiry",
+      "intent": "Open the member inquiry screen",
+      "action": "click",
+      "target": "member_inquiry_link",
+      "risk": "read",
+      "expect": { "resolvable": "member_number_field" },
+      "timeoutMs": 10000,
+      "retry": { "max": 1 }
+    },
+    {
+      "id": "fill_member",
+      "intent": "Enter the member number",
+      "action": "fill",
+      "target": "member_number_field",
+      "value": "{{inputs.memberId}}",
+      "risk": "reversible",
+      "expect": { "valueEquals": "{{inputs.memberId}}" },
+      "timeoutMs": 5000,
+      "retry": { "max": 1 }
+    },
+    {
+      "id": "search",
+      "intent": "Run the search",
+      "action": "click",
+      "target": "search_button",
+      "risk": "read",
+      "expect": { "resolvable": "view_link" },
+      "timeoutMs": 10000,
+      "retry": { "max": 0 }
+    },
+    {
+      "id": "open_member",
+      "intent": "Open the member's profile",
+      "action": "click",
+      "target": "view_link",
+      "risk": "read",
+      "expect": { "resolvable": "savings_balance_cell" },
+      "timeoutMs": 10000,
+      "retry": { "max": 0 }
+    },
+    {
+      "id": "read_balance",
+      "intent": "Read the savings balance",
+      "action": "extract",
+      "target": "savings_balance_cell",
+      "output": "savingsBalance",
+      "risk": "read",
+      "timeoutMs": 5000,
+      "retry": { "max": 1 }
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "afterSteps": ["search"],
+      "signature": { "scope": ["workarea"], "textPresent": "No members match" }
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "afterSteps": ["open_member"],
+      "signature": { "scope": ["workarea"], "textPresent": "Access restricted" }
+    }
+  ],
+  "conditions": "profile",
+  "checkpoint": {
+    "all": [
+      { "cellEquals": { "target": "profile_member_no", "value": "{{inputs.memberId}}" } },
+      { "outputParsed": "savingsBalance" }
+    ]
+  },
+  "requires": {
+    "actions": ["click", "fill", "extract"],
+    "maxRisk": "reversible",
+    "scopes": ["nav", "workarea"]
+  },
+  "provenance": { "author": "hand-written fixture; the specification the compiler must reproduce" }
+}

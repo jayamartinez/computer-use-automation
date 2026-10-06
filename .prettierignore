@@ -1,0 +1,8 @@
+node_modules
+runs
+evidence
+docs
+pnpm-lock.yaml
+AGENTS.md
+README.md
+REPORT.md

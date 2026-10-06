@@ -1,0 +1,172 @@
+{
+  "product": "coreserv",
+  "versions": "7.x",
+  "surface": "web",
+  "scopes": ["banner", "nav", "workarea"],
+  "versionProbe": {
+    "scope": ["banner"],
+    "pattern": "CoreServ (\\d+\\.\\d+)"
+  },
+  "login": {
+    "steps": [
+      {
+        "action": "fill",
+        "target": {
+          "scope": [],
+          "role": "textbox",
+          "strategies": [
+            {
+              "kind": "anchor",
+              "text": "Operator ID",
+              "relation": "right_of"
+            }
+          ],
+          "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
+        },
+        "value": "{{secrets.operatorId}}"
+      },
+      {
+        "action": "fill",
+        "target": {
+          "scope": [],
+          "role": "textbox",
+          "strategies": [
+            {
+              "kind": "anchor",
+              "text": "Password",
+              "relation": "right_of"
+            }
+          ],
+          "rationale": "Unlabeled input; the adjacent label cell is the only stable handle."
+        },
+        "value": "{{secrets.password}}"
+      },
+      {
+        "action": "click",
+        "target": {
+          "scope": [],
+          "role": "button",
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "Sign In"
+            }
+          ],
+          "rationale": "Submit button named by its value."
+        }
+      }
+    ],
+    "authenticated": {
+      "scope": ["nav"],
+      "textPresent": "Member Inquiry"
+    }
+  },
+  "conditions": [
+    {
+      "id": "system_notice",
+      "disposition": "recover",
+      "signature": {
+        "scope": ["workarea"],
+        "textPresent": "System Notice"
+      },
+      "handler": {
+        "click": {
+          "scope": ["workarea"],
+          "role": "button",
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "Acknowledge"
+            }
+          ],
+          "rationale": "The interstitial's only control."
+        }
+      },
+      "resume": "continue",
+      "maxAttempts": 2
+    },
+    {
+      "id": "session_expired",
+      "disposition": "recover",
+      "signature": {
+        "scope": ["workarea"],
+        "textPresent": "Your session has expired"
+      },
+      "handler": {
+        "click": {
+          "scope": ["workarea"],
+          "role": "link",
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "Sign in again"
+            }
+          ],
+          "rationale": "The expired screen's only control; it returns the whole window to the sign-in page."
+        }
+      },
+      "resume": "restart_if_no_side_effects",
+      "maxAttempts": 1
+    },
+    {
+      "id": "app_error",
+      "disposition": "fail",
+      "signature": {
+        "scope": ["workarea"],
+        "textPresent": "Application Error"
+      }
+    },
+    {
+      "id": "supervisor_override",
+      "disposition": "escalate",
+      "signature": {
+        "scope": ["workarea"],
+        "textPresent": "Supervisor Override Required"
+      }
+    }
+  ],
+  "timeouts": {
+    "slowLoadMs": 3000
+  },
+  "risk": {
+    "safeControls": [
+      "Search",
+      "View",
+      "Continue",
+      "Acknowledge",
+      "Member Inquiry",
+      "Open Sub-Account"
+    ],
+    "commitControls": ["Confirm"]
+  },
+  "masks": [
+    {
+      "label": "Account No",
+      "where": "below"
+    },
+    {
+      "label": "SSN",
+      "where": "right_of"
+    },
+    {
+      "label": "Balance",
+      "where": "below"
+    },
+    {
+      "label": "Name",
+      "where": "below",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Inquiry Results"
+      }
+    },
+    {
+      "label": "Name",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Profile"
+      }
+    }
+  ]
+}

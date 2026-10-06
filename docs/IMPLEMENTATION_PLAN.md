@@ -18,17 +18,13 @@ Work the milestones in order. Do not start one until the previous one meets its 
 
 **Secondary (only when core is complete, in this order):**
 1. Outcome probing in the compiler.
-2. Capability catalog: `list` and `invoke` with tool schemas generated from inputs.
-3. Modern-web CoreServ variant run as a second tenant with a target-override file.
-4. Unknown-outcome evidence scenario.
+2. Unknown-outcome evidence scenario.
 
-**Stretch (separate from required work; the PDF caps stretch goals at one or two):**
-- Bounded single-step LLM-assisted fallback on replay failure (opt-in, policy-checked, never open-ended).
-- Approval workflow beyond the status field.
-- Multi-run stability report.
-- Desktop surface.
+**Stretch: exactly these two (PDF §8 caps stretch goals at one or two; chosen by the developer on 2026-10-05):**
+1. **Approval gating** (PDF "Confidence & approval", gating part only): unattended replay runs only an `approved` artifact; a `draft` needs an explicit caller override and says so in the result. Confidence scoring is not included.
+2. **Second-tenant variant** (PDF "Canonicalization / cross-tenant reuse"): a modern-web CoreServ variant run as a second tenant with a target-override file. One artifact, two tenants. Its screens need Paper mockups approved first.
 
-Items 2 and 3 of the secondary list are themselves stretch goals in the PDF's terms. If both are built, do nothing from the stretch list.
+**Dropped:** capability catalog (`list` / `invoke`), LLM-assisted fallback on replay failure, multi-run stability report, code generation, desktop surface. The report lists them as cuts.
 
 ## Architecture summary
 
@@ -54,27 +50,31 @@ Data read by several components: app profile, tenant binding.
 - [x] `AGENTS.md`, `docs/DESIGN.md`, `docs/DECISIONS.md`, this plan, repo skeleton, Paper diagrams.
 
 ### M1. Scaffold — `chore: scaffold TypeScript project`
-- [ ] `package.json`, strict `tsconfig`, test runner, lint/format, Playwright with Chromium, npm scripts (`app`, `test`, `lint`, `typecheck`).
+- [x] `package.json`, strict `tsconfig`, test runner, lint/format, Playwright with Chromium, pnpm scripts (`app`, `test`, `lint`, `typecheck`).
 
 **Done when:** a clean clone installs, and `typecheck`, `lint` and an empty test run pass on macOS.
 
 ### M2. Demo app, read path — `feat(app): CoreServ shell, inquiry and member profile`
-- [ ] Login, frameset shell, Main Menu, Member Inquiry, Results, Member Profile; seed data; reset endpoint.
+- [x] Login, frameset shell, Main Menu, Member Inquiry, Results, Member Profile; seed data; reset endpoint.
 
 **Done when:** a person can log in and look up 10042 and 10077 by hand; 99999 shows "No members match"; 10200 shows "Access restricted"; the markup has no IDs, labels or test IDs; URLs do not reveal state; `demo-app/` imports nothing from `src/`.
 
 ### M3. Demo app, write path and faults — `feat(app): sub-account flow, supervisor override, fault injection`
 - [ ] Sub-Account Form, Review, Confirmation; insufficient-funds rule; supervisor override above $2,500; System Notice, Session Expired, Application Error; fault endpoint including `commitThen500`.
 
+**Partly done.** System Notice, Session Expired and Application Error are built from the approved mockups (artboards 7 to 9), along with the `notice`, `expireSession`, `error500` and `latencyMs` faults. Still to do: the sub-account screens, the insufficient-funds rule, Supervisor Override, `commitThen500`, and a screen with a native dialog for M5. Each new screen needs a mockup approved first.
+
 **Done when:** every screen and branch in `docs/DESIGN.md` §1–2 is reachable by hand, and each fault can be switched on and observed.
 
 ### M4. Schemas — `feat(schema): artifact, profile, tenant binding and result contract`
-- [ ] Zod schemas and derived types; artifact load/save with content hash; templating; the CoreServ profile and `lakeside` binding as data; a **hand-written** `lookup_balance` artifact in `tests/fixtures/`.
+- [x] Zod schemas and derived types; artifact load/save with content hash; templating; the CoreServ profile and `lakeside` binding as data; a **hand-written** `lookup_balance` artifact in `tests/fixtures/`.
 
 **Done when:** the fixture and profile validate; invalid artifacts are rejected with useful messages (unknown target reference, undeclared input in a template, irreversible step with retries, output with no source step); schema tests pass.
 
 ### M5. Surface — `feat(surface): Surface interface, PlaywrightSurface, FakeSurface`
 - [ ] Observation across frames; `resolve` for `role_name`, `anchor`, `table_cell`; `act`; `matches`; masked screenshots; native dialog reporting; `FakeSurface`.
+
+**Partly done (acd90eb).** Everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come with M3.
 
 **Done when:** integration tests against the demo app resolve every target in the lookup fixture uniquely, report `ambiguous` and `none` correctly, and resolve the same targets with 300 ms of injected latency.
 
@@ -83,20 +83,24 @@ Data read by several components: app profile, tenant binding.
 ### M6. Guarded executor — `feat(executor): policy engine, controller epoch, run log, redaction`
 - [ ] Policy checks in the order given in `docs/DESIGN.md` §9; network-layer origin and path blocking; risk classification from profile rules; structured `run.jsonl`; redaction by sensitivity.
 
-**Done when:** tests show an action outside the allowlist is denied before reaching the surface; a request to another origin or to `/__admin/` is blocked; a stale epoch is refused; no input marked sensitive and no secret appears unmasked in any log line.
+**Partly done (9766c60).** Everything except risk classification from profile rules, which only discovery uses. Replay takes risk from the reviewed `risk` field on each step.
+
+**Done when:** tests show an action outside the allowlist is denied before reaching the surface; a request to another origin, to an unlisted path or to `/__admin/` is blocked; a stale epoch is refused; no input marked sensitive and no secret appears unmasked in any log line.
 
 ### M7. Replay, happy path — `feat(replay): interpreter for lookup_balance`
-- [ ] Input validation, preflight against policy, profile login, step loop, checkpoint, typed outputs, `ReplayResult`.
+- [x] Input validation, preflight against policy, profile login, step loop, checkpoint, typed outputs, `ReplayResult`.
 
 **Done when:** `replay coreserv.member.lookup_balance --input memberId=10077` returns `success` with the correct balance, and `memberId=10042` returns that member's balance from the same artifact. No model code is importable from `src/replay/`.
 
 ### M8. Replay, exceptional states — `feat(replay): outcomes, recoveries and failure evidence`
-- [ ] State race; outcome signatures; profile conditions with dispositions and bounded recovery; failure evidence.
+- [x] State race; outcome signatures; profile conditions with dispositions and bounded recovery; failure evidence.
+
+**Done (2026-10-05).** Every criterion below passes against the real app (`tests/integration/replay.test.ts`), and every condition is also covered on `FakeSurface`.
 
 **Done when**, against the real app:
 - 99999 returns `business_outcome: MEMBER_NOT_FOUND`; 10200 returns `PERMISSION_DENIED`.
 - With `notice` on, the run succeeds and reports one recovery.
-- With a short `sessionTtl`, the run re-logs in, restarts and succeeds.
+- With `expireSession` armed (replacing the planned `sessionTtl`), the run re-logs in, restarts and succeeds.
 - With `latencyMs` set, the run succeeds with a `slow_load` warning.
 - With `error500`, the run returns `failure: app_error` with step, expected, observed and a masked screenshot.
 - With a target's label changed in a test copy, the run returns `target_unresolved`, or succeeds with `locator_fallback` when a second strategy exists.
@@ -164,6 +168,50 @@ evidence/
 
 E7 needs a person at the keyboard; a short screen recording is welcome. Everything except E1 and E7 is regenerated by the scenario runner.
 
+## Deviations from the plan
+
+Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 and M6 partly). Items 9 and 10 were added with M8. None changes a locked decision in `AGENTS.md`.
+
+1. **M3 was skipped for now.** The checkpoint needed only the read path, so the write path and fault injection were deferred. M3 must be finished before M8, which depends on the faults. It also unblocks the M5 latency test.
+2. **The assignment PDF arrived after the code was written.** The pass against PDF §3, §6 and §7 was done afterwards (2026-10-05) and found no drift in what is built. Three things it sharpened for later milestones:
+   - §3.3 names "an unexpected dialog" as a runtime condition replay must handle, so native dialog reporting (outstanding from M5) is required, not optional.
+   - §11 requires a **public** GitHub repo at submission. The repo is private today.
+   - §8 caps stretch goals at one or two. The developer chose approval gating and the second-tenant variant; everything else in §8 is a cut (see Locked scope).
+3. **`table_cell` is resolved geometrically from visible text**, not from DOM table structure, and all three locator kinds are resolved by one pure function over the observation (`src/surface/resolve.ts`). Both surfaces share it. This follows `docs/DESIGN.md` §3 and makes the desktop argument concrete; the cost is that a column is found by horizontal overlap with its header text.
+4. **`right_of` and `below` mean the nearest control in that direction.** A tie is ambiguous. "Exactly one or fail" still holds; nothing is narrowed by document order.
+5. **Accessible names in observations are simplified** (aria-label, then `<label>`, then the element's own content). Roles come from Playwright's ARIA implementation.
+6. **Step schema has `click`, `fill` and `extract` only.** `select` and `assert` are in the policy vocabulary but are added to the step union in M9, with the capability that uses them, so no untested action exists.
+7. **Schema shapes that differ from the `DESIGN.md` examples:**
+   - Tenant `policy` has `scopes` (then `frames`; required by `AGENTS.md`, missing from the example) and does not yet have `irreversible`; the executor always requires an approval for an irreversible action. M9 adds the field.
+   - Profile `masks` entries are `{ label, where: "below" | "right_of" }`. A bare label could not say whether the value sits under a column header or beside a form label, and guessing masked the neighbouring header.
+   - Profile has no `formats`. Money is parsed as `$#,##0.00` in `src/replay/values.ts`; an uninterpreted format string would be a false promise.
+   - Login values are `{{secrets.operatorId}}` and `{{secrets.password}}`, resolved from the tenant's `credentials` references.
+   - `failure.evidence` is optional: a run rejected for invalid input or at preflight never had a screen.
+   - `contentHash` excludes `status`, so approving an artifact does not change the hash of what was approved.
+   - A money output is `{ amount: "15902.66", currency: "USD" }`.
+8. **`result.json` on disk has outputs masked by sensitivity.** The caller (and the CLI's stdout) gets the real values. Evidence must hold no unmasked sensitive value, and this file is copied into `evidence/` later.
+9. **M8 was done before M3 was finished**, at the developer's request. The parts of M3 that M8 needs were built first: three interruption screens from approved mockups, and their faults.
+10. **M8 design choices:**
+   - **State race order:** profile conditions, then the step's outcomes, then its expected state, all checked against one observation. `Surface` gained `firstMatch(signatures)` for this; separate `matches` calls would compare different moments of the screen.
+   - **Profile conditions are a union by disposition.** `session_expired` recovers by clicking "Sign in again" and then `restart_if_no_side_effects`, which signs in through the profile and starts from step 1. The design's `handler: "login"` could not work: after expiry the nav frame still shows "Member Inquiry", so the authenticated check passes and login is skipped. `maxAttempts` defaults to 2. The profile gained `timeouts.slowLoadMs` (3000).
+   - **`escalate` without an operator channel returns `failure: escalation_timeout`** (no operator answered within the time allowed, which is zero here). M10 routes it to the intervention channel instead.
+   - **A `fail` condition returns `app_error`.** When a target cannot be resolved, replay first checks the profile conditions, so an error page reads as `app_error`, not drift.
+   - **`safeToRetry` means retrying cannot duplicate a side effect *and* might succeed.** It is false for `invalid_input`, `policy_denied`, `target_unresolved`, `target_ambiguous` and `extraction_invalid`. The table is in `src/outcome/result.ts`.
+   - **`observed` on `unexpected_state` lists the states that were checked**, never screen content.
+   - After a handler click, replay waits up to `slowLoadMs` for the condition to clear before waiting for the step's state again. Otherwise the old notice, still on screen while the next page loads, is matched again. A condition that is still there is counted as a repeat. The real-app notice test found this; the fake surface changes state instantly.
+   - **Faults are armed on a screen and fire once** (`{"notice": "search"}`), instead of the planned time-based `sessionTtl`. Every scenario then reproduces exactly.
+   - A step's `retry` budget applies only to failures from the step itself (unresolved, ambiguous, unexpected state, extraction). A disposition's decision is final.
+
+## Known issues
+
+- Member numbers stay visible in saved evidence (D16). Logs show them as `***77`.
+- The scrub backstop replaces digit-only inputs anywhere in a log string, so it could alter a hash or run id that happens to contain one. Low probability; primary redaction does not depend on it.
+- The run-log scrub backstop ignores values shorter than four characters, to avoid mangling ordinary text. Primary redaction does not depend on it.
+- `profile.risk`, `profile.versionProbe` and the `version_mismatch` warning are validated data with no behaviour yet (M11, M8 drift signals).
+- Restarting after session expiry checks whether an irreversible step was dispatched, but no artifact can dispatch one until M9. That branch is untested until then.
+- An expected state that already holds before the action, on the old screen, would be matched at once. The fixture's expected states are all absent before their action. M9's artifact must keep that property, or the race needs a "screen changed" guard.
+- Each observation makes about a dozen round trips per frame (scope). Fine locally (a full replay takes about one second); revisit if the latency fault makes polling slow.
+
 ## Spike findings
 
 (Record the result of the pre-M6 model spike here.)
@@ -173,3 +221,12 @@ E7 needs a person at the keyboard; a short screen recording is welcome. Everythi
 | Date | Milestone | Commit | Notes |
 |---|---|---|---|
 | 2026-10-05 | M0 | ca7133a | Design documents, diagrams and skeleton |
+| 2026-10-05 | M1 | 81aeeb9 | Scaffold: pnpm, tsx, Vitest, ESLint, Prettier, Playwright Chromium |
+| 2026-10-05 | M2 | e755b24 | CoreServ read path |
+| 2026-10-05 | M4 | 85e87e4 | Schemas, profile and binding data, hand-written `lookup_balance` fixture |
+| 2026-10-05 | M5 (partial) | acd90eb | Surface, PlaywrightSurface, FakeSurface; dialogs and latency test outstanding |
+| 2026-10-05 | M6 (partial) | 9766c60 | Executor, policy, epoch, run log, redaction; profile risk rules outstanding |
+| 2026-10-05 | M7 | 9aa6396 | Replay happy path; 10077 and 10042 from one artifact. M3 deferred, see Deviations |
+| 2026-10-05 | M8 | ae8065d, 466d2e7, 3554a52 | Outcomes, recoveries, failure evidence; real-app scenarios after the three interruption screens |
+| 2026-10-05 | M3 (partial) | 3554a52 | System Notice, Session Expired, Application Error; notice, expireSession, error500 and latencyMs faults |
+| 2026-10-05 | — | 6adc113, 9a24d74, f4f95e0 | `frame` renamed to `scope` (D15); path allowlist; names and balances masked in evidence (D16) |

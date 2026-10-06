@@ -2,6 +2,8 @@
 
 The detailed design behind the rules in `AGENTS.md`. Schemas here are conceptual: field names and shapes are the intent, and the Zod definitions written in milestone 4 become the authority once they exist. If implementation needs a different shape, change it deliberately and update this file.
 
+**The Zod definitions now exist** (`src/artifact/schema.ts`, `src/profile/schema.ts`, `src/outcome/result.ts`, `src/surface/target.ts`) and are the authority. Where they differ from the examples below, the differences and reasons are listed under "Deviations from the plan" in `docs/IMPLEMENTATION_PLAN.md`.
+
 Nine diagrams in `docs/diagrams/` (exported from the Paper file "fake banking app") show the same design visually: `01-system-architecture`, `02-discovery-lifecycle`, `03-deterministic-replay`, `04-artifact-anatomy`, `05-result-taxonomy`, `06-safety-and-policy-gate`, `07-human-handoff`, `08-coreserv-workflows`, `09-surfaces-and-layering`. If a diagram and this file disagree, this file wins.
 
 ## 1. Demo application: CoreServ 7.2
@@ -40,11 +42,13 @@ Operator `teller01`. Its password and the supervisor override code come from the
 
 | Fault | Effect |
 |---|---|
-| `notice` | The next workarea request shows the System Notice interstitial; Acknowledge continues to the requested page |
-| `sessionTtl` | Session expires after N seconds; the workarea shows Session Expired |
+| `notice` | Armed on a workarea screen: the next request for it shows the System Notice; Acknowledge continues to that screen with the same form data |
+| `expireSession` | Armed on a workarea screen: the next request for it ends the session and shows Session Expired. Every later request shows it until the operator uses "Sign in again", which opens the sign-in page in the whole window |
 | `latencyMs` | Adds delay to every response |
-| `error500` | The next matching request returns the Application Error page |
+| `error500` | Armed on a workarea screen: the next request for it returns the Application Error page (HTTP 500) |
 | `commitThen500` | Confirm commits the sub-account, then returns the Application Error page |
+
+Screen faults fire once, on the screen they are armed for (`main_menu`, `inquiry`, `search`, `profile`), so every scenario reproduces exactly. Example: `POST /__admin/faults {"notice": "search"}`; `null` disarms. A clock-based session TTL was rejected because the re-login pass would expire again at a different step on each run.
 
 ## 2. Workflows
 
@@ -84,15 +88,17 @@ Two rules worth keeping:
 
 ```ts
 interface Surface {
-  observe(): Promise<Observation>;                 // elements with refs, role, name, text, bounds, frame; screenshot; fingerprint
+  observe(): Promise<Observation>;                 // elements with refs, role, name, text, bounds, scope; screenshot; fingerprint
   resolve(target: Target): Promise<Resolution>;    // { kind: "unique", handle, strategyIndex } | { kind: "ambiguous", count } | { kind: "none" }
   act(handle: Handle, action: Action): Promise<void>;
   matches(signature: Signature): Promise<boolean>;
+  firstMatch(signatures: Signature[]): Promise<number | undefined>; // ordered, one observation
   screenshot(opts: { mask: MaskRule[] }): Promise<Buffer>;
 }
 ```
 
 - The recorded flow speaks only in targets, actions and signatures. How a surface perceives and acts is entirely behind this interface.
+- **Scope.** Each target and signature names a scope: an ordered path of named containers, matched exactly. The surface defines the names: on `PlaywrightSurface` it is the path of frame names below the top document (`["workarea"]`); on a single-document page it is `[]`; a desktop surface would use window then pane. A surface must give each container a stable name. `PlaywrightSurface` uses the frame's `name`, so an unnamed iframe is a known gap.
 - A native dialog (alert/confirm) is reported in the observation as a state. It is never auto-accepted; an unknown one is an `unexpected_state`.
 - `PlaywrightSurface` builds observations from per-frame accessibility snapshots plus bounding boxes, and resolves `anchor` and `table_cell` geometrically.
 - `FakeSurface` is an in-memory state machine used to test the interpreter, executor and handoff without a browser.
@@ -122,14 +128,14 @@ Trimmed example:
 
   "targets": {
     "member_number_field": {
-      "frame": ["workarea"], "role": "textbox",
+      "scope": ["workarea"], "role": "textbox",
       "strategies": [
         { "kind": "anchor", "text": "Member Number", "relation": "right_of" }
       ],
       "rationale": "Input has no accessible name; the adjacent label cell is the only stable handle."
     },
     "search_button": {
-      "frame": ["workarea"], "role": "button",
+      "scope": ["workarea"], "role": "button",
       "strategies": [
         { "kind": "role_name", "name": "Search" },
         { "kind": "anchor", "text": "Member Number", "relation": "below" }
@@ -137,7 +143,7 @@ Trimmed example:
       "rationale": "Named by its value attribute; anchor kept as fallback."
     },
     "view_link": {
-      "frame": ["workarea"], "role": "link",
+      "scope": ["workarea"], "role": "link",
       "strategies": [
         { "kind": "table_cell", "headers": ["Member No", "Name"],
           "row": { "column": "Member No", "equals": "{{inputs.memberId}}" }, "column": "Action" }
@@ -145,7 +151,7 @@ Trimmed example:
       "rationale": "Row is keyed by the templated member number, never by position or name."
     },
     "savings_balance_cell": {
-      "frame": ["workarea"], "role": "cell",
+      "scope": ["workarea"], "role": "cell",
       "strategies": [
         { "kind": "table_cell", "headers": ["Type", "Balance"],
           "row": { "column": "Type", "equals": "Savings" }, "column": "Balance" }
@@ -178,9 +184,9 @@ Trimmed example:
 
   "outcomes": [
     { "code": "MEMBER_NOT_FOUND", "afterSteps": ["search"],
-      "signature": { "frame": ["workarea"], "textPresent": "No members match" } },
+      "signature": { "scope": ["workarea"], "textPresent": "No members match" } },
     { "code": "PERMISSION_DENIED", "afterSteps": ["open_member"],
-      "signature": { "frame": ["workarea"], "textPresent": "Access restricted" } }
+      "signature": { "scope": ["workarea"], "textPresent": "Access restricted" } }
   ],
   "conditions": "profile",       // all app-profile conditions apply; none are copied into the artifact
 
@@ -190,7 +196,7 @@ Trimmed example:
   ]},
 
   "requires": { "actions": ["click", "fill", "extract"], "maxRisk": "reversible",
-                "frames": ["nav", "workarea"] },
+                "scopes": ["nav", "workarea"] },
 
   "provenance": { "traceId": "…", "model": "…", "discoveredAt": "…",
                   "compilerVersion": "…", "verifiedWith": "inputs differing from discovery" }
@@ -204,7 +210,7 @@ Trimmed example:
 - **Actions.** `click`, `fill`, `select`, `extract`, `assert`.
 - **Risk.** `read`, `reversible`, `irreversible`. An irreversible step has `retry.max: 0` and `onTimeout: "outcome_unknown"`.
 - **Expect.** `valueEquals` for fills and selects; `resolvable` (the next target can be uniquely resolved) for clicks. Checkpoints add identity read-back and parsed outputs.
-- **Signatures.** Content predicates within a frame (`textPresent`, `resolvable`, `cellEquals`), combined with `all` / `any`. Never URL-based.
+- **Signatures.** Content predicates within a scope (`textPresent`, `resolvable`, `cellEquals`), combined with `all` / `any`. Never URL-based.
 - **Types.** `string`, `integer`, `money` (decimal string, currency), `date`, `enum`. Sensitivities: `none`, `identifier`, `financial`, `account_number`, `pii`.
 - **`open_subaccount` differences.** `requires.maxRisk` is `irreversible`; outputs `newAccountNumber` (`account_number`, logged masked) and `confirmationRef`.
 
@@ -217,23 +223,25 @@ Per step:
 2. Policy check for this action and risk.
 3. Resolve the target, waiting up to the timeout.
 4. Act through the guarded executor.
-5. **State race:** wait for the first match among the step's `expect`, any outcome whose `afterSteps` includes this step, and any profile condition.
+5. **State race:** wait for the first match among any profile condition, any outcome whose `afterSteps` includes this step, and the step's `expect`, checked in that order against one observation. If the target in step 3 cannot be resolved, check the profile conditions before reporting drift.
 6. Act on the disposition of whatever matched (table below). A timeout with nothing matched is `unexpected_state`.
 
 | Observed | Disposition | Effect |
 |---|---|---|
 | Step's `expect` | continue | next step |
 | Outcome signature | outcome | return `business_outcome` |
-| `system_notice` | recover | acknowledge, re-wait for `expect` |
-| `session_expired` | recover | re-login and restart from step 1, only if no irreversible step was dispatched; otherwise `outcome_unknown` |
+| `system_notice` | recover | acknowledge, wait for the notice to clear (up to `slowLoadMs`), re-wait for `expect` |
+| `session_expired` | recover | click "Sign in again", re-login and restart from step 1, only if no irreversible step was dispatched; otherwise `outcome_unknown` |
 | Slow load | (none) | waiting is built in; past a soft threshold adds a `slow_load` warning |
-| `supervisor_override` | escalate | takeover request |
+| `supervisor_override` | escalate | takeover request; with no operator channel, `failure: escalation_timeout` |
 | Irreversible step without unattended approval | escalate | approval request |
 | `app_error` | fail | `failure: app_error` |
 | Nothing matched | fail | `failure: unexpected_state` |
 | Irreversible step dispatched, result undetermined | escalate | `unknown_outcome` request |
 
-Recoveries are bounded (default two attempts per condition per run); exceeding the bound is `recovery_exhausted`.
+Recoveries are bounded (default two attempts per condition per run); exceeding the bound is `recovery_exhausted`. A step's `retry` budget covers only failures from the step itself; a disposition's decision is final.
+
+`safeToRetry` is true only when nothing can have been committed and the category is not fixed by the inputs, the policy, the artifact or a human (`src/outcome/result.ts`).
 
 ### Result contract
 
@@ -296,7 +304,7 @@ type Common = {
   "decision": { "action": "fill", "ref": "e14", "value": { "input": "memberId" },
                 "rationale": "Enter the member number to search" },
   "policy": { "risk": "reversible", "decision": "allow", "rule": "fill:default" },
-  "target": { "role": "textbox", "frame": ["workarea"],
+  "target": { "role": "textbox", "scope": ["workarea"],
               "candidates": [
                 { "kind": "role_name", "unique": false },
                 { "kind": "anchor", "text": "Member Number", "relation": "right_of", "unique": true } ] },
@@ -330,22 +338,27 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
 // profiles/coreserv/profile.json
 {
   "product": "coreserv", "versions": "7.x", "surface": "web",
-  "frames": ["banner", "nav", "workarea"],
-  "versionProbe": { "frame": ["banner"], "pattern": "CoreServ (\\d+\\.\\d+)" },
+  "scopes": ["banner", "nav", "workarea"],
+  "versionProbe": { "scope": ["banner"], "pattern": "CoreServ (\\d+\\.\\d+)" },
   "login": { "steps": [ /* fill operator id, fill {{secrets.password}}, click Sign In */ ],
-             "authenticated": { "frame": ["nav"], "textPresent": "Member Inquiry" } },
+             "authenticated": { "scope": ["nav"], "textPresent": "Member Inquiry" } },
   "conditions": [
     { "id": "system_notice",       "disposition": "recover",  "signature": { "textPresent": "System Notice" },
       "handler": { "click": { "role": "button", "name": "Acknowledge" } }, "resume": "continue", "maxAttempts": 2 },
     { "id": "session_expired",     "disposition": "recover",  "signature": { "textPresent": "Your session has expired" },
-      "handler": "login", "resume": "restart_if_no_side_effects", "maxAttempts": 1 },
+      "handler": { "click": { "role": "link", "name": "Sign in again" } }, "resume": "restart_if_no_side_effects", "maxAttempts": 1 },
     { "id": "app_error",           "disposition": "fail",     "signature": { "textPresent": "Application Error" } },
     { "id": "supervisor_override", "disposition": "escalate", "signature": { "textPresent": "Supervisor Override Required" } }
   ],
+  "timeouts": { "slowLoadMs": 3000 },
   "risk": { "safeControls": ["Search", "View", "Continue", "Acknowledge", "Member Inquiry", "Open Sub-Account"],
             "commitControls": ["Confirm"] },
   "formats": { "money": "$#,##0.00", "date": "MM/DD/YYYY" },
-  "masks": ["Account No", "SSN"]
+  "masks": [                     // values hidden in saved screenshots and observation dumps
+    { "label": "Account No", "where": "below" }, { "label": "SSN", "where": "right_of" },
+    { "label": "Balance", "where": "below" },
+    { "label": "Name", "where": "below",    "when": { "scope": ["workarea"], "textPresent": "Member Inquiry Results" } },
+    { "label": "Name", "where": "right_of", "when": { "scope": ["workarea"], "textPresent": "Member Profile" } } ]
 }
 
 // profiles/coreserv/tenants/lakeside.json
@@ -353,7 +366,7 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
   "tenant": "lakeside", "product": "coreserv", "deployedVersion": "7.2",
   "baseUrl": "http://localhost:4070",
   "credentials": { "operatorId": "env:CORESERV_OPERATOR_ID", "password": "env:CORESERV_OPERATOR_PASSWORD" },
-  "policy": { "origins": ["http://localhost:4070"], "denyPaths": ["/__admin/"],
+  "policy": { "origins": ["http://localhost:4070"], "paths": ["/", "/cs.do"],
               "actions": ["click", "fill", "select", "extract", "assert"],
               "maxRisk": "irreversible", "irreversible": "require_approval" }
 }
@@ -368,11 +381,11 @@ Tenant overrides (secondary) patch named targets, condition signatures and timeo
 Checks, in order, for every action:
 1. Controller is `automation` and the epoch matches.
 2. Action type is allowed for this tenant.
-3. Target frame is allowed.
+3. Target scope is allowed.
 4. Risk class is within `maxRisk`; an irreversible action has an approval.
 5. Execute through the surface; log the event with redaction applied.
 
-Independent of these, the browser context blocks any request to an origin outside the allowlist and any denied path.
+Independent of these, the browser context blocks every request whose origin and path are not both on the tenant allowlist (`paths` entries are exact, or a prefix when they end in `*`). It fails closed, so the admin endpoints are blocked because they are not listed.
 
 ## 10. Human handoff
 

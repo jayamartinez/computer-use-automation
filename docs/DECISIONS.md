@@ -42,6 +42,7 @@ Short records of the decisions that shape this project. Each has the decision, t
 
 **Decision.** Risk classification comes from profile rules and reviewed step metadata. The guarded executor is the only path to the surface. The origin allowlist is also enforced at the network layer.
 **Why.** A model cannot be the control on its own actions. A click's destination is unknown when the decision is made, so the network layer is the backstop.
+**Update (2026-10-05).** The path rule is an allowlist (`paths`), replacing the earlier deny list (`denyPaths`). A deny list fails open for any path nobody thought of; PDF §3.4 asks for permitted routes. With opaque postback URLs the CoreServ list is short: `/` and `/cs.do`.
 **Cost.** The profile's safe and commit control lists are hand-authored per app. Unknown buttons require approval in discovery, which can be chatty.
 
 ## D8. Irreversible steps: approval, no retry, unknown outcome is explicit
@@ -74,9 +75,9 @@ Short records of the decisions that shape this project. Each has the decision, t
 **Why.** OpenRouter keeps the model swappable through configuration without a multi-vendor abstraction in the code. One key keeps setup simple for reviewers. The recorded provider answers the PDF's "how to run without live services".
 **Cost.** Discovery quality depends on the configured model supporting image input and tool calling.
 
-## D13. Modern web is secondary; desktop is stretch
+## D13. Modern web is a stretch goal; desktop is design only
 
-**Decision.** `FakeSurface` proves the surface seam in the core. A modern-web variant of CoreServ is secondary and, if built, runs as a second tenant with relabeled fields and a target-override file, so one piece of work demonstrates both surface robustness and cross-tenant reuse. Desktop is stretch.
+**Decision.** `FakeSurface` proves the surface seam in the core. A modern-web variant of CoreServ is one of the two stretch goals (the other is approval gating; chosen 2026-10-05). If built, it runs as a second tenant with relabeled fields and a target-override file, so one piece of work demonstrates both surface robustness and cross-tenant reuse. Desktop is not built.
 **Why.** The PDF asks for a credible design for heterogeneity and tenants, not an implementation. A second tenant variant answers §3.7 more directly than a second surface type alone.
 **Cost.** Desktop support is argued in the report, not demonstrated.
 
@@ -85,3 +86,15 @@ Short records of the decisions that shape this project. Each has the decision, t
 **Decision.** No queues, services, databases, containers or multi-tenant plumbing.
 **Why.** PDF §7: designing abstractions that could scale is valued; building the infrastructure is not. The layering of profile, capability and tenant binding is the scaling story.
 **Cost.** None within this assignment.
+
+## D15. Targets name a surface scope, not a frame
+
+**Decision.** Targets, signatures, `requires`, the profile and tenant policy use `scope`: an ordered path of named containers that the surface defines. This replaced `frame` on 2026-10-05.
+**Why.** The artifact is meant to be surface-independent (PDF §3.7). The value was already a generic path; only the name was web vocabulary. A desktop surface maps the same field to window then pane, and a modern web page to `[]`, with no schema change. A typed union per surface kind was rejected, because it would put surface kinds into the artifact.
+**Cost.** A surface must produce stable container names. `PlaywrightSurface` uses frame names, so an unnamed iframe has no stable scope yet.
+
+## D16. Saved evidence masks names, account numbers and balances
+
+**Decision.** The profile's mask rules hide member names, account numbers and balances in every saved screenshot and observation dump. A rule names a visible label, the direction of its values (`below` a column header, `right_of` a form label), and optionally a `when` signature that limits it to one screen.
+**Why.** PDF §3.4 forbids persisting raw sensitive data. Evidence is copied into the repository, and even synthetic data should be handled the way real data would be. Without `when`, a label rule over-reaches: masking below "Name" on the profile also hides the Accounts table under it.
+**Cost.** Masks are geometric and hand-written per screen; a relabeled screen needs its rule updated. Member numbers stay visible in evidence (they are identifiers, shown last-two-digits in logs), so a reviewer can tell which run is which. The caller always receives unmasked outputs.
