@@ -6,9 +6,11 @@ import { loadProfile, loadTenant, resolveSecrets } from "../profile/load.ts";
 import { runReplay } from "../replay/run.ts";
 
 const USAGE = `Usage:
-  replay <capability-id | artifact.json> --input name=value [--input ...] [--tenant lakeside] [--headed]
+  replay <capability-id | artifact.json> --input name=value [--input ...] [--tenant lakeside]
+         [--headed] [--allow-irreversible]
 
-A capability id is looked up in capabilities/<id>.json.`;
+A capability id is looked up in capabilities/<id>.json. --allow-irreversible lets an approved
+artifact run its irreversible steps unattended; a draft never does.`;
 
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
@@ -23,6 +25,7 @@ async function main(): Promise<number> {
       input: { type: "string", multiple: true, default: [] },
       tenant: { type: "string", default: "lakeside" },
       headed: { type: "boolean", default: false },
+      "allow-irreversible": { type: "boolean", default: false },
     },
   });
   const [capability] = positionals;
@@ -54,6 +57,7 @@ async function main(): Promise<number> {
     secrets: resolveSecrets(tenant, process.env),
     runsDir: "runs",
     headed: values.headed,
+    allowIrreversible: values["allow-irreversible"],
   });
   console.log(JSON.stringify(result, null, 2));
   return result.status === "failure" ? 1 : 0;

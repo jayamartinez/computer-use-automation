@@ -21,6 +21,8 @@ export type RunReplayOptions = {
   secrets: Record<string, string>;
   runsDir: string;
   headed?: boolean;
+  /** Run irreversible steps unattended; honoured only for an `approved` artifact. */
+  allowIrreversible?: boolean;
 };
 
 /**
@@ -67,6 +69,7 @@ export async function runReplay(options: RunReplayOptions): Promise<ReplayResult
       executor,
       log,
       logPath,
+      allowIrreversible: options.allowIrreversible ?? false,
     });
     await writeFile(
       join(runDir, "result.json"),

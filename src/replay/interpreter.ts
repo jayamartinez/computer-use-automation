@@ -42,6 +42,11 @@ export type ReplayOptions = {
   executor: GuardedExecutor;
   log: RunLog;
   logPath: string;
+  /**
+   * The caller's explicit permission to run irreversible steps unattended. It takes effect only
+   * for an `approved` artifact.
+   */
+  allowIrreversible?: boolean;
 };
 
 type StepRef = { id: string; intent: string };
@@ -50,6 +55,8 @@ type ActingStep = Exclude<Step, { action: "assert" }>;
 type Problem = Pick<Failure, "category" | "expected" | "observed"> & {
   step: StepRef;
   screen: boolean;
+  /** For `outcome_unknown`: what was observed after dispatch, as its own category. */
+  cause?: FailureCategory;
 };
 
 type Stop =
@@ -95,6 +102,10 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
   let outputs: Record<string, OutputValue> = {};
   let stepsCompleted = 0;
   let irreversibleDispatched = false;
+  // The control epoch in which each assert step last passed. A pre-commit read-back is only
+  // valid in the epoch it ran in: a transfer of control may have changed the screen.
+  const assertedIn = new Map<string, number>();
+  const unattended = artifact.status === "approved" && options.allowIrreversible === true;
 
   const common = () => ({
     runId: options.runId,
@@ -295,6 +306,23 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
     }
   };
 
+  /** An irreversible action was dispatched and what it did cannot be determined. */
+  const unknownOutcome = (
+    step: StepRef,
+    cause: FailureCategory,
+    observed: string,
+  ): Extract<Stop, { kind: "problem" }> => ({
+    kind: "problem",
+    problem: {
+      category: "outcome_unknown",
+      cause,
+      step,
+      expected: "The step's expected state after the irreversible action",
+      observed,
+      screen: true,
+    },
+  });
+
   /** What a step waits for: its expected state, or for an `assert`, its check. */
   const expected = (step: Exclude<Step, { action: "extract" }>): Signature =>
     step.action === "assert" ? bind(step.check) : bindExpect(step.expect, step);
@@ -316,11 +344,21 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
         })),
       { kind: "expect", signature: expected(step) },
     ];
+    // Only a step that has just dispatched an irreversible action is judged this way; a later
+    // step's failure keeps its own category and reports possible side effects.
+    const committing = step.risk === "irreversible";
     for (;;) {
       const hit = await executor.race(
         candidates.map((c) => c.signature),
         step.timeoutMs,
       );
+      if (!hit && committing) {
+        return unknownOutcome(
+          step,
+          "unexpected_state",
+          `No known state appeared within ${step.timeoutMs} ms after the irreversible action`,
+        );
+      }
       if (!hit) {
         return problem(
           step,
@@ -340,7 +378,25 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
         case "outcome":
           return { kind: "outcome", code: matched.code };
         case "condition": {
-          const handled = await handle(matched.condition, step);
+          const { condition } = matched;
+          // A notice can still be acknowledged: that repeats nothing. Anything else after a
+          // commit (an error page, an expired session, an escalation) leaves the result unknown.
+          if (
+            committing &&
+            !(condition.disposition === "recover" && condition.resume === "continue")
+          ) {
+            log.write("condition", {
+              stepId: step.id,
+              condition: condition.id,
+              disposition: condition.disposition,
+            });
+            return unknownOutcome(
+              step,
+              condition.disposition === "fail" ? "app_error" : "unexpected_state",
+              `Condition ${condition.id} matched after the irreversible action was dispatched`,
+            );
+          }
+          const handled = await handle(condition, step);
           // The action stands; wait again for where it leads.
           if (handled.kind !== "continue") return handled;
           break;
@@ -354,7 +410,22 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
   /** One attempt at a step. Problems are returned, not thrown, so the step can be retried. */
   const attempt = async (step: Step): Promise<StepEnd> => {
     // An assert acts on nothing; the state race over its check is the whole step.
-    if (step.action === "assert") return settle(step);
+    if (step.action === "assert") {
+      const end = await settle(step);
+      if (end.kind === "done") assertedIn.set(step.id, executor.epoch);
+      return end;
+    }
+    if (step.risk === "irreversible") {
+      // The schema puts an assert right before every irreversible step. Run it again if
+      // control changed hands since it passed.
+      const index = artifact.steps.indexOf(step);
+      const check = artifact.steps[index - 1];
+      if (check?.action === "assert" && assertedIn.get(check.id) !== executor.epoch) {
+        log.write("reassert", { stepId: step.id, assertStep: check.id });
+        const end = await attempt(check);
+        if (end.kind !== "done") return end;
+      }
+    }
     for (;;) {
       const result = await executor.perform({
         epoch: executor.epoch,
@@ -369,7 +440,24 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
           ? { value: { actual: renderDeep(step.value, scopes), logged: step.value } }
           : {}),
         timeoutMs: step.timeoutMs,
+        ...(step.risk === "irreversible" ? { approved: unattended } : {}),
       });
+      if (result.status === "dispatch_error") {
+        if (step.risk === "irreversible") {
+          irreversibleDispatched = true;
+          return unknownOutcome(
+            step,
+            "unexpected_state",
+            "The surface failed while performing the irreversible action",
+          );
+        }
+        return problem(
+          step,
+          "unexpected_state",
+          `The surface performs ${step.action} on "${step.target}"`,
+          "The surface failed while performing the action",
+        );
+      }
       if (result.status === "denied") {
         return problem(
           step,

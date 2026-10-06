@@ -60,6 +60,28 @@ const click = (overrides: Partial<ActionRequest> = {}): ActionRequest => ({
   ...overrides,
 });
 
+describe("guarded executor: irreversible dispatch", () => {
+  it("logs an irreversible action as dispatched before acting, even if acting throws", async () => {
+    const { executor, surface, lines } = setup();
+    surface.act = () => Promise.reject(new Error("navigation interrupted\nstack"));
+    const result = await executor.perform(click({ risk: "irreversible", approved: true }));
+    expect(result).toEqual({ status: "dispatch_error", message: "navigation interrupted" });
+    expect(lines.map((line) => JSON.parse(line).event)).toEqual([
+      "dispatch_irreversible",
+      "action_error",
+    ]);
+  });
+
+  it("does not log a dispatch for an irreversible action it refused", async () => {
+    const { executor, lines } = setup();
+    expect(await executor.perform(click({ risk: "irreversible" }))).toMatchObject({
+      status: "denied",
+      rule: "irreversible_unapproved",
+    });
+    expect(lines.join("\n")).not.toContain("dispatch_irreversible");
+  });
+});
+
 describe("guarded executor", () => {
   it("dispatches an allowed action and logs the decision", async () => {
     const { executor, surface, lines } = setup();

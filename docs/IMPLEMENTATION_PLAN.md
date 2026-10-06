@@ -106,7 +106,9 @@ Data read by several components: app profile, tenant binding.
 - With a target's label changed in a test copy, the run returns `target_unresolved`, or succeeds with `locator_fallback` when a second strategy exists.
 
 ### M9. Replay, write path — `feat(replay): open_subaccount, risk gate, unknown outcome`
-- [ ] Hand-written `open_subaccount` fixture; `select` and `assert` actions; irreversible gate; `outcome_unknown`.
+- [x] Hand-written `open_subaccount` fixture; `select` and `assert` actions; irreversible gate; `outcome_unknown`.
+
+**Done (2026-10-05).** Every criterion below passes against the real app (`tests/integration/write-path.test.ts`). The `commitThen500` test also reads the member's Savings afterwards with `lookup_balance`, proving the app committed although the run could not see it. Session expiry on Confirm is `outcome_unknown` without a restart.
 
 Two commits: `feat(schema): select and assert steps, typed comparison, pre-commit rule` and `feat(replay): open_subaccount, risk gate, unknown outcome`.
 
@@ -212,8 +214,7 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 - The scrub backstop replaces digit-only inputs anywhere in a log string, so it could alter a hash or run id that happens to contain one. Low probability; primary redaction does not depend on it.
 - The run-log scrub backstop ignores values shorter than four characters, to avoid mangling ordinary text. Primary redaction does not depend on it.
 - `profile.risk`, `profile.versionProbe` and the `version_mismatch` warning are validated data with no behaviour yet (M11, M8 drift signals).
-- Restarting after session expiry checks whether an irreversible step was dispatched, but no artifact can dispatch one until M9. That branch is untested until then.
-- An expected state that already holds before the action, on the old screen, would be matched at once. The fixture's expected states are all absent before their action. M9's artifact must keep that property, or the race needs a "screen changed" guard.
+- An expected state that already holds before the action, on the old screen, would be matched at once. Both fixtures' expected states are absent before their action (the write path's Review is recognised by its Confirm button, which no earlier screen has). A compiled artifact must keep that property, or the race needs a "screen changed" guard.
 - Each observation makes about a dozen round trips per frame (scope). Fine locally (a full replay takes about one second); revisit if the latency fault makes polling slow.
 
 ## Spike findings
@@ -235,4 +236,6 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 | 2026-10-05 | M3 (partial) | 3554a52 | System Notice, Session Expired, Application Error; notice, expireSession, error500 and latencyMs faults |
 | 2026-10-05 | — | 6adc113, 9a24d74, f4f95e0 | `frame` renamed to `scope` (D15); path allowlist; names and balances masked in evidence (D16) |
 | 2026-10-05 | — | d98f498 | Write-path, dialog and handoff design approved (D16 update, D17–D21); branch `feat/write-path-handoff` |
-| 2026-10-05 | M3 | (this commit) | Sub-account flow, supervisor override, `commitThen500` and `dialog` faults |
+| 2026-10-05 | M3 | 9c62ca4 | Sub-account flow, supervisor override, `commitThen500` and `dialog` faults |
+| 2026-10-05 | — | 46ac5c4 | Member numbers, amounts and the operator id masked in evidence (D16 update) |
+| 2026-10-05 | M9 | 4c3572e and the replay commit after it | `select`/`assert`, money comparison, pre-commit rule; irreversible gate, dispatch-before-act, `outcome_unknown` |

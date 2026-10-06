@@ -29,7 +29,9 @@ export type ActionRequest = {
 export type ActionResult =
   | { status: "done"; element: ObservedElement; strategyIndex: number }
   | { status: "denied"; rule: string; reason: string }
-  | { status: "unresolved"; kind: "none" | "ambiguous"; count: number };
+  | { status: "unresolved"; kind: "none" | "ambiguous"; count: number }
+  // The surface was told to act and failed part-way. Whatever the action does may have happened.
+  | { status: "dispatch_error"; message: string };
 
 export type ExecutorOptions = {
   surface: Surface;
@@ -91,22 +93,33 @@ export class GuardedExecutor {
       return { status: "unresolved", kind: resolution.kind, count };
     }
 
-    switch (request.action) {
-      case "click":
-        await surface.act(resolution.handle, { kind: "click" });
-        break;
-      case "fill":
-      case "select":
-        await surface.act(resolution.handle, {
-          kind: request.action,
-          value: request.value?.actual ?? "",
-        });
-        break;
-      case "extract":
-        // Reading is the resolution itself; the caller takes the text from the element.
-        break;
-      default:
-        request.action satisfies never;
+    // An irreversible action counts as dispatched from here on, before the surface acts: an
+    // error while acting cannot prove that nothing was committed.
+    if (request.risk === "irreversible") {
+      log.write("dispatch_irreversible", { ...base, epoch: request.epoch });
+    }
+    try {
+      switch (request.action) {
+        case "click":
+          await surface.act(resolution.handle, { kind: "click" });
+          break;
+        case "fill":
+        case "select":
+          await surface.act(resolution.handle, {
+            kind: request.action,
+            value: request.value?.actual ?? "",
+          });
+          break;
+        case "extract":
+          // Reading is the resolution itself; the caller takes the text from the element.
+          break;
+        default:
+          request.action satisfies never;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message.split("\n")[0]! : String(error);
+      log.write("action_error", { ...base, message });
+      return { status: "dispatch_error", message };
     }
     log.write("action", {
       ...base,
