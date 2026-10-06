@@ -167,6 +167,90 @@
         "scope": ["workarea"],
         "textPresent": "Member Profile"
       }
+    },
+    {
+      "label": "Name",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Open Sub-Account"
+      }
+    },
+    {
+      "label": "Member Name",
+      "where": "right_of"
+    },
+    {
+      "label": "Member No",
+      "where": "below",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Inquiry Results"
+      }
+    },
+    {
+      "label": "Member No",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Profile"
+      }
+    },
+    {
+      "label": "Member No",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Open Sub-Account"
+      }
+    },
+    {
+      "label": "Member No",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Sub-Account Confirmation"
+      }
+    },
+    {
+      "label": "Member Number",
+      "where": "right_of"
+    },
+    {
+      "label": "New Account No",
+      "where": "right_of"
+    },
+    {
+      "label": "Opening Deposit",
+      "where": "right_of"
+    },
+    {
+      "label": "Opening Deposit *",
+      "where": "right_of"
+    },
+    {
+      "label": "Available Balance",
+      "where": "right_of"
+    },
+    {
+      "label": "Amount",
+      "where": "right_of"
+    },
+    {
+      "label": "Supervisor ID",
+      "where": "right_of"
+    },
+    {
+      "label": "Supervisor Override",
+      "where": "right_of"
+    },
+    {
+      "label": "Operator:",
+      "where": "self"
+    },
+    {
+      "label": "Welcome,",
+      "where": "self"
     }
   ]
 }

@@ -35,11 +35,11 @@ export type Signature =
   | { all: Signature[] }
   | { any: Signature[] };
 
-// The values beneath this visible label (a column header) or beside it (a form label) are
-// sensitive.
+// The values beneath this visible label (a column header), beside it (a form label) or in the
+// same text element (`self`, as in "Operator: teller01") are sensitive.
 export type MaskRule = {
   label: string;
-  where: "below" | "right_of";
+  where: "below" | "right_of" | "self";
   /** Applies only while this holds, so a label can be masked on the screen it was meant for. */
   when?: Signature;
 };

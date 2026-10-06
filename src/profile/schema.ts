@@ -61,7 +61,7 @@ export const ProfileSchema = z.strictObject({
   masks: z.array(
     z.strictObject({
       label: z.string().min(1),
-      where: z.enum(["below", "right_of"]),
+      where: z.enum(["below", "right_of", "self"]),
       when: TextSignatureSchema.optional(),
     }),
   ),

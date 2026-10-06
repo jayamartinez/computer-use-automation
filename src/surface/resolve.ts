@@ -185,14 +185,22 @@ export function matchesSignature(observation: Observation, signature: Signature)
 }
 
 /**
- * Elements holding a sensitive value: everything in the column beneath a mask label, or the
- * element immediately to its right. Used for screenshots and, via maskObservation, for dumps.
+ * Elements holding a sensitive value: everything in the column beneath a mask label, the
+ * element immediately to its right, or (`self`) any text that begins with the label because the
+ * value shares its element. Used for screenshots and, via maskObservation, for dumps.
  */
 export function maskedElements(elements: ObservedElement[], rules: MaskRule[]): ObservedElement[] {
   const masked = new Set<ObservedElement>();
   const screen: Observation = { id: "", fingerprint: "", elements };
   for (const rule of rules) {
     if (rule.when && !matchesSignature(screen, rule.when)) continue;
+    if (rule.where === "self") {
+      const label = normalize(rule.label);
+      for (const e of elements) {
+        if (e.role === "text" && normalize(e.text).startsWith(label)) masked.add(e);
+      }
+      continue;
+    }
     for (const label of textElements(elements, rule.label)) {
       const l = label.bounds;
       const peers = elements.filter(
