@@ -7,6 +7,7 @@ import { redact } from "../evidence/redact.ts";
 import type { RunLog } from "../evidence/run-log.ts";
 import type { GuardedExecutor } from "../executor/guarded-executor.ts";
 import { ensureAuthenticated } from "../executor/login.ts";
+import type { HandoffController } from "../handoff/controller.ts";
 import { checkRequires } from "../executor/policy.ts";
 import {
   safeToRetry,
@@ -47,6 +48,11 @@ export type ReplayOptions = {
    * for an `approved` artifact.
    */
   allowIrreversible?: boolean;
+  /**
+   * The route to a person. Without one, an escalation fails as `escalation_timeout`, an
+   * unapproved irreversible step as `policy_denied`, and an unknown outcome stays unknown.
+   */
+  handoff?: HandoffController;
 };
 
 type StepRef = { id: string; intent: string };
@@ -57,6 +63,8 @@ type Problem = Pick<Failure, "category" | "expected" | "observed"> & {
   screen: boolean;
   /** For `outcome_unknown`: what was observed after dispatch, as its own category. */
   cause?: FailureCategory;
+  /** Set when a person has said what happened; otherwise derived from what was dispatched. */
+  sideEffects?: Failure["sideEffects"];
 };
 
 type Stop =
@@ -65,7 +73,12 @@ type Stop =
   | { kind: "problem"; problem: Problem };
 type StepEnd = { kind: "done" } | Stop;
 /** After a condition is handled: carry on with the step, or stop it. */
-type Handled = { kind: "continue" } | Exclude<Stop, { kind: "outcome" }>;
+type Handled =
+  | { kind: "continue" }
+  // A person resolved an escalated condition and returned control; the screen must be matched
+  // again without running the step that led there.
+  | { kind: "resync"; condition: string }
+  | Exclude<Stop, { kind: "outcome" }>;
 
 // What the screen may show after an action, in the order it is checked on one observation.
 // Conditions come first: an error page or an interstitial means the screen is not in any state
@@ -94,7 +107,7 @@ const problem = (
 });
 
 export async function replay(options: ReplayOptions): Promise<ReplayResult> {
-  const { artifact, inputs, profile, tenant, executor, log } = options;
+  const { artifact, inputs, profile, tenant, executor, log, handoff } = options;
   const started = Date.now();
   const warnings: ReplayResult["warnings"] = [];
   const recoveries: ReplayResult["recoveries"] = [];
@@ -114,7 +127,7 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
     durationMs: Date.now() - started,
     stepsCompleted,
     recoveries,
-    interventions: [],
+    interventions: handoff?.interventions ?? [],
     warnings,
     log: options.logPath,
   });
@@ -127,7 +140,7 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
 
   const fail = async (p: Problem): Promise<ReplayResult> => {
     const evidence = p.screen ? await executor.captureEvidence(p.step.id) : undefined;
-    const sideEffects = irreversibleDispatched ? "possible" : "none";
+    const sideEffects = p.sideEffects ?? (irreversibleDispatched ? "possible" : "none");
     const failure: Failure = {
       category: p.category,
       stepId: p.step.id,
@@ -293,14 +306,45 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
           "The application to process the request",
           `Condition ${condition.id} matched`,
         );
-      case "escalate":
-        // The non-interactive answer. The handoff milestone routes this to an operator instead.
-        return problem(
-          step,
-          "escalation_timeout",
-          "An operator to take over the session",
-          `Condition ${condition.id} needs a human and this run has no operator channel`,
-        );
+      case "escalate": {
+        if (!handoff) {
+          return problem(
+            step,
+            "escalation_timeout",
+            "An operator to take over the session",
+            `Condition ${condition.id} needs a human and this run has no operator channel`,
+          );
+        }
+        const taken = await handoff.takeover("takeover", {
+          stepId: step.id,
+          intent: step.intent,
+          reason: `Condition ${condition.id} needs a person`,
+          condition: condition.id,
+        });
+        switch (taken.resolution) {
+          case "returned":
+            // A person may have clicked a commit control; restarting would then be unsafe.
+            if (taken.humanCommitted) irreversibleDispatched = true;
+            return { kind: "resync", condition: condition.id };
+          case "timeout":
+            return problem(
+              step,
+              "escalation_timeout",
+              "An operator to take over the session",
+              `Nobody resolved condition ${condition.id} within the time allowed`,
+            );
+          case "aborted":
+          case "declined":
+            return problem(
+              step,
+              "aborted_by_human",
+              "An operator to resolve the condition and return control",
+              `The operator stopped the run at condition ${condition.id}`,
+            );
+          default:
+            return taken satisfies never;
+        }
+      }
       default:
         return condition satisfies never;
     }
@@ -322,6 +366,58 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
       screen: true,
     },
   });
+
+  /**
+   * An unknown outcome, routed to a person when there is one. They look at the live session and
+   * say what happened; the click is never repeated. If the expected state is on screen when
+   * control comes back (a slow commit finished), the step simply succeeded.
+   */
+  const unknown = async (
+    step: Exclude<Step, { action: "extract" }>,
+    cause: FailureCategory,
+    observed: string,
+  ): Promise<StepEnd> => {
+    const stop = unknownOutcome(step, cause, observed);
+    if (!handoff) return stop;
+    const taken = await handoff.takeover("unknown_outcome", {
+      stepId: step.id,
+      intent: step.intent,
+      reason: observed,
+    });
+    if (taken.resolution !== "returned") return stop;
+    const now = await executor.race([expected(step)], profile.timeouts.slowLoadMs);
+    handoff.resynced(now !== undefined);
+    if (now) {
+      log.write("state", { stepId: step.id, matched: "expected state", after: "unknown_outcome" });
+      return { kind: "done" };
+    }
+    // A verdict proves the side effect, not the outputs: those were never read from a
+    // checkpointed screen, so the result stays a failure either way.
+    switch (taken.answer) {
+      case "committed":
+        return {
+          kind: "problem",
+          problem: {
+            ...stop.problem,
+            category: cause,
+            sideEffects: "committed",
+            observed: `${observed}; the operator confirmed the action committed`,
+          },
+        };
+      case "not_committed":
+        return {
+          kind: "problem",
+          problem: {
+            ...stop.problem,
+            category: cause,
+            sideEffects: "none",
+            observed: `${observed}; the operator confirmed nothing was committed`,
+          },
+        };
+      default:
+        return stop;
+    }
+  };
 
   /** What a step waits for: its expected state, or for an `assert`, its check. */
   const expected = (step: Exclude<Step, { action: "extract" }>): Signature =>
@@ -347,13 +443,31 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
     // Only a step that has just dispatched an irreversible action is judged this way; a later
     // step's failure keeps its own category and reports possible side effects.
     const committing = step.risk === "irreversible";
+    // Set after a person returns control: the condition they resolved. Until the screen matches
+    // something known, the handoff is resynchronising, and the step is never run again.
+    let returnedFrom: string | undefined;
+    let wait = step.timeoutMs;
+    const endResync = (ok: boolean): void => {
+      if (returnedFrom !== undefined) handoff?.resynced(ok);
+      returnedFrom = undefined;
+    };
     for (;;) {
       const hit = await executor.race(
         candidates.map((c) => c.signature),
-        step.timeoutMs,
+        wait,
       );
+      if (!hit && returnedFrom !== undefined) {
+        endResync(false);
+        return problem(
+          step,
+          "unexpected_state",
+          "The step's expected state, one of its outcomes or a known condition after control was returned",
+          `After control was returned the screen matched none of ${candidates.map(label).join(", ")}; ` +
+            "the step that escalated is not run again",
+        );
+      }
       if (!hit && committing) {
-        return unknownOutcome(
+        return unknown(
           step,
           "unexpected_state",
           `No known state appeared within ${step.timeoutMs} ms after the irreversible action`,
@@ -374,11 +488,22 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
       if (hit.ms > profile.timeouts.slowLoadMs) warn("slow_load", step.id);
       switch (matched.kind) {
         case "expect":
+          endResync(true);
           return { kind: "done" };
         case "outcome":
+          endResync(true);
           return { kind: "outcome", code: matched.code };
         case "condition": {
           const { condition } = matched;
+          if (condition.id === returnedFrom) {
+            endResync(false);
+            return problem(
+              step,
+              "unexpected_state",
+              `Condition ${condition.id} resolved by the operator`,
+              `Condition ${condition.id} is still on screen after control was returned`,
+            );
+          }
           // A notice can still be acknowledged: that repeats nothing. Anything else after a
           // commit (an error page, an expired session, an escalation) leaves the result unknown.
           if (
@@ -390,15 +515,25 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
               condition: condition.id,
               disposition: condition.disposition,
             });
-            return unknownOutcome(
+            return unknown(
               step,
               condition.disposition === "fail" ? "app_error" : "unexpected_state",
               `Condition ${condition.id} matched after the irreversible action was dispatched`,
             );
           }
           const handled = await handle(condition, step);
+          if (handled.kind === "resync") {
+            log.write("resync", { stepId: step.id, condition: handled.condition });
+            returnedFrom = handled.condition;
+            wait = profile.timeouts.slowLoadMs;
+            break;
+          }
+          // A restart carries on with automation; anything else ends the step.
+          if (handled.kind !== "continue") {
+            endResync(handled.kind === "restart");
+            return handled;
+          }
           // The action stands; wait again for where it leads.
-          if (handled.kind !== "continue") return handled;
           break;
         }
         default:
@@ -415,9 +550,29 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
       if (end.kind === "done") assertedIn.set(step.id, executor.epoch);
       return end;
     }
+    let approved = unattended;
+    if (step.risk === "irreversible" && !unattended && handoff) {
+      const answer = await handoff.approval({
+        stepId: step.id,
+        intent: step.intent,
+        reason:
+          artifact.status === "approved"
+            ? "The caller did not allow irreversible steps to run unattended"
+            : "The capability is a draft, not approved for unattended runs",
+      });
+      if (answer !== "approve") {
+        return problem(
+          step,
+          answer === "deny" ? "aborted_by_human" : "escalation_timeout",
+          "Approval for the irreversible step",
+          answer === "deny" ? "The approver denied it" : "No approver answered in time",
+        );
+      }
+      approved = true;
+    }
     if (step.risk === "irreversible") {
       // The schema puts an assert right before every irreversible step. Run it again if
-      // control changed hands since it passed.
+      // control changed hands since it passed (an approval wait counts).
       const index = artifact.steps.indexOf(step);
       const check = artifact.steps[index - 1];
       if (check?.action === "assert" && assertedIn.get(check.id) !== executor.epoch) {
@@ -440,16 +595,15 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
           ? { value: { actual: renderDeep(step.value, scopes), logged: step.value } }
           : {}),
         timeoutMs: step.timeoutMs,
-        ...(step.risk === "irreversible" ? { approved: unattended } : {}),
+        ...(step.risk === "irreversible" ? { approved } : {}),
       });
       if (result.status === "dispatch_error") {
         if (step.risk === "irreversible") {
           irreversibleDispatched = true;
-          return unknownOutcome(
-            step,
-            "unexpected_state",
-            "The surface failed while performing the irreversible action",
-          );
+          const observed = "The surface failed while performing the irreversible action";
+          return step.action === "extract"
+            ? unknownOutcome(step, "unexpected_state", observed)
+            : unknown(step, "unexpected_state", observed);
         }
         return problem(
           step,
@@ -475,6 +629,12 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
         if (hit) {
           const handled = await handle(profile.conditions[hit.index]!, step);
           if (handled.kind === "continue") continue;
+          // The control was missing because of the condition, so this step has not acted yet
+          // and runs now. Only a step whose own action led to an escalation is never re-run.
+          if (handled.kind === "resync") {
+            handoff?.resynced(true);
+            continue;
+          }
           return handled;
         }
         return problem(

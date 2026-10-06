@@ -117,7 +117,9 @@ Two commits: `feat(schema): select and assert steps, typed comparison, pre-commi
 **Done when:** the flow opens a sub-account for 10077 and returns both outputs; an over-balance deposit returns `INSUFFICIENT_FUNDS`; without approval the run stops at Confirm with `policy_denied` when run non-interactively (the approval request arrives with M10's channel); with `commitThen500` the Confirm click is not repeated and the result is `outcome_unknown` with `sideEffects: "possible"`; a Review that does not match the inputs stops before Confirm.
 
 ### M10. Handoff — `feat(handoff): control state machine, intervention channel, human capture`
-- [ ] State machine and epoch; `InterventionChannel` with the file-and-terminal implementation; headed-browser takeover; human action capture; resync; unknown-outcome verdicts.
+- [x] State machine and epoch; `InterventionChannel` with the file-and-terminal implementation; headed-browser takeover; human action capture; resync; unknown-outcome verdicts.
+
+**Done (2026-10-05), except the run with a real person.** Unit tests (`tests/unit/handoff.test.ts`) cover every transition, timeouts, aborts, approval and epoch fencing with a scripted person on `FakeSurface`. Real-app tests (`tests/integration/handoff.test.ts`) run the full criteria with a scripted person acting on the same live session outside the executor: override authorized and resumed, Cancel then return, abort, claim timeout, approval approve and deny, and the three unknown-outcome verdicts. Not yet exercised: `TerminalChannel` and the headed window with a real person at the keyboard; that is the E7 evidence run (`pnpm replay … --operator`).
 
 Two commits: `feat(handoff): control state machine and intervention channel` and `feat(handoff): headed takeover, human action capture, resync`.
 
@@ -210,6 +212,12 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
    - **Faults are armed on a screen and fire once** (`{"notice": "search"}`), instead of the planned time-based `sessionTtl`. Every scenario then reproduces exactly.
    - A step's `retry` budget applies only to failures from the step itself (unresolved, ambiguous, unexpected state, extraction). A disposition's decision is final.
 11. **Write-path design approved (2026-10-05)**, recorded as D16 (update) to D21: dialogs as a `dialog` scope; `assert` before every irreversible step; marking dispatch before acting; no tenant `irreversible` field; the "committed" verdict as a failure with `outputsVerified: false`; no re-run of an escalated step; member numbers and the operator ID masked; Paper notes kept out of the app. Work continues on `feat/write-path-handoff`, branched from the M8 head, in this order: M3, masking, M9, dialog handling, M10.
+12. **M10 choices:**
+   - **Timeout and abort go straight to `FAILED`**, not through `RESYNC` as the diagram in `docs/DESIGN.md` §10 draws it: the run ends without reading the screen again, so there is nothing to resynchronise.
+   - **A missing control explained by an escalation** (the condition was already on screen before the step acted) runs the step after control returns. Only the step whose own action led to the escalation is never re-run (D20).
+   - **Human capture** is an init script in every frame plus a page binding, installed at launch. It reports only while a takeover is active, so automation's own clicks are never attributed to the person. It reports clicks and changes; a person's form submit shows up as the click on its button.
+   - **`runReplay` accepts `onSurface`**, which hands the live session to an operator surface; tests use it to act as the person. A channel opens the browser headed unless the caller says otherwise.
+   - **Default handoff timeouts:** 10 minutes to claim or approve, 30 minutes in control.
 
 ## Known issues
 
@@ -240,4 +248,6 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 | 2026-10-05 | — | d98f498 | Write-path, dialog and handoff design approved (D16 update, D17–D21); branch `feat/write-path-handoff` |
 | 2026-10-05 | M3 | 9c62ca4 | Sub-account flow, supervisor override, `commitThen500` and `dialog` faults |
 | 2026-10-05 | — | 46ac5c4 | Member numbers, amounts and the operator id masked in evidence (D16 update) |
-| 2026-10-05 | M9 | 4c3572e and the replay commit after it | `select`/`assert`, money comparison, pre-commit rule; irreversible gate, dispatch-before-act, `outcome_unknown` |
+| 2026-10-05 | M9 | 4c3572e, dac0b87 | `select`/`assert`, money comparison, pre-commit rule; irreversible gate, dispatch-before-act, `outcome_unknown` |
+| 2026-10-05 | M5 | 63c3b42, a59e07f | Native dialogs as the `dialog` scope; known alert as a profile condition |
+| 2026-10-05 | M10 | f95d571 and the commit after it | State machine, intervention channel, human capture, resync, verdicts; real-person run outstanding (E7) |
