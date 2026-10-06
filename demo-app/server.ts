@@ -8,8 +8,15 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AddressInfo } from "node:net";
 import { seedMembers, type Member } from "./data.ts";
 import * as pages from "./pages.ts";
+import type { Draft } from "./pages.ts";
 
-export type CoreServConfig = { port: number; operatorId: string; password: string };
+export type CoreServConfig = {
+  port: number;
+  operatorId: string;
+  password: string;
+  /** Known to the app and to supervisors; the automation never has it. */
+  supervisorCode: string;
+};
 
 type Action =
   | { screen: "login" }
@@ -19,7 +26,14 @@ type Action =
   | { screen: "inquiry" }
   | { screen: "search" }
   | { screen: "profile"; memberId: string }
+  | { screen: "subaccount"; memberId: string; draft?: Draft; error?: string }
+  | { screen: "continue"; memberId: string }
+  | { screen: "authorize"; memberId: string; draft: Draft }
+  | { screen: "confirm"; memberId: string; draft: Draft }
   | { screen: "acknowledge"; then: Action; form: string };
+
+// What a request renders: a page, or an error page with its HTTP status.
+type Rendered = string | { status: number; body: string };
 
 type Session = { authenticated: boolean; expired: boolean; actions: Map<string, Action> };
 
@@ -27,16 +41,46 @@ type Session = { authenticated: boolean; expired: boolean; actions: Map<string, 
 // workarea screen and fires once, on the next request for that screen, so every scenario
 // reproduces exactly. A clock-based session expiry would not: the re-login pass would expire
 // again at a different step on every run.
-const WORKAREA_SCREENS = ["main_menu", "inquiry", "search", "profile"] as const;
+const WORKAREA_SCREENS = [
+  "main_menu",
+  "inquiry",
+  "search",
+  "profile",
+  "subaccount",
+  "continue",
+  "confirm",
+] as const;
 type WorkareaScreen = (typeof WORKAREA_SCREENS)[number];
-const SCREEN_FAULTS = ["notice", "expireSession", "error500"] as const;
-type Faults = { latencyMs: number } & Partial<
-  Record<(typeof SCREEN_FAULTS)[number], WorkareaScreen>
+const SCREEN_FAULTS = ["notice", "expireSession", "error500", "dialog"] as const;
+type ScreenFault = (typeof SCREEN_FAULTS)[number];
+// commitThen500 is not tied to a screen: it fires on the next Confirm, after committing.
+type Faults = { latencyMs: number; commitThen500?: boolean } & Partial<
+  Record<ScreenFault, WorkareaScreen>
 >;
 const NO_FAULTS: Faults = { latencyMs: 0 };
 const MAX_LATENCY_MS = 60_000;
 
 const COOKIE = "CSSESSION";
+
+const TELLER_LIMIT_CENTS = 250_000;
+const NICKNAME = /^[A-Za-z0-9 ]{1,20}$/;
+const PASSWORD_ALERT =
+  "Your CoreServ password expires in 3 days. Contact the Help Desk at ext. 4400 to change it before it expires.";
+
+/** A plain decimal amount ("500" or "500.00") in cents, or undefined. */
+function parseCents(text: string): number | undefined {
+  const match = /^(\d{1,9})(?:\.(\d{2}))?$/.exec(text.trim());
+  return match ? Number(match[1]) * 100 + Number(match[2] ?? "0") : undefined;
+}
+
+const savingsOf = (member: Member) => member.accounts.find((a) => a.type === "Savings");
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const usDate = (d: Date) => `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+const usDateTime = (d: Date) =>
+  `${usDate(d)} ${d.getHours() % 12 || 12}:${pad(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
+const digits = (count: number) =>
+  Array.from(randomBytes(count), (byte) => String(byte % 10)).join("");
 
 export async function startCoreServ(
   config: CoreServConfig,
@@ -51,7 +95,130 @@ export async function startCoreServ(
     return `/cs.do?act=${token}`;
   };
 
-  const render = (session: Session, action: Action, form: URLSearchParams): string => {
+  const applicationError = (): { status: number; body: string } => {
+    const reference = randomBytes(4).toString("hex").toUpperCase();
+    return {
+      status: 500,
+      body: pages.applicationErrorPage(`${reference.slice(0, 4)}-${reference.slice(4)}`),
+    };
+  };
+
+  const memberById = (id: string) => members.find((m) => m.id === id && !m.restricted);
+
+  /** Opens the account and posts the deposit. There is no idempotency key, as in the real thing. */
+  const commit = (member: Member, draft: Draft, depositCents: number) => {
+    const savings = savingsOf(member)!;
+    savings.balanceCents -= depositCents;
+    const suffix = Math.max(0, ...member.accounts.map((a) => Number(a.number.slice(-2)))) + 1;
+    const now = new Date();
+    const accountNumber = `4000-${member.id}-${pad(suffix)}`;
+    member.accounts.push({
+      number: accountNumber,
+      type: draft.accountType,
+      balanceCents: depositCents,
+      opened: usDate(now),
+    });
+    return {
+      accountNumber,
+      draft,
+      depositCents,
+      reference: `OSA-${digits(4)}-${digits(4)}`,
+      posted: usDateTime(now),
+    };
+  };
+
+  /** The sub-account flow: validation, then the funds rule, then the teller limit. */
+  const subAccount = (session: Session, action: Action, form: URLSearchParams): Rendered => {
+    const memberId = "memberId" in action ? action.memberId : "";
+    const member = memberById(memberId);
+    if (!member) return pages.messagePage("Open Sub-Account", "Member record not available.");
+    const available = savingsOf(member)?.balanceCents ?? 0;
+    const profile = () =>
+      pages.profilePage(member, link(session, { screen: "subaccount", memberId }));
+    const showForm = (draft?: Draft, error?: string) =>
+      pages.subAccountFormPage(
+        member,
+        link(session, { screen: "continue", memberId }),
+        available,
+        draft,
+        error,
+      );
+    const review = (draft: Draft) =>
+      pages.reviewPage(
+        member,
+        link(session, { screen: "confirm", memberId, draft }),
+        draft,
+        parseCents(draft.deposit)!,
+      );
+    const button = form.get("b");
+
+    switch (action.screen) {
+      case "subaccount":
+        return showForm(action.draft, action.error);
+      case "continue": {
+        if (button === "Cancel") return profile();
+        const draft: Draft = {
+          accountType: form.get("f1") ?? "",
+          nickname: (form.get("f2") ?? "").trim(),
+          deposit: (form.get("f3") ?? "").trim(),
+        };
+        const cents = parseCents(draft.deposit);
+        const valid =
+          (pages.ACCOUNT_TYPES as readonly string[]).includes(draft.accountType) &&
+          NICKNAME.test(draft.nickname) &&
+          cents !== undefined &&
+          cents > 0;
+        if (!valid || cents === undefined) return showForm(draft, "Complete all required fields.");
+        if (cents > available) {
+          return showForm(
+            draft,
+            "Opening deposit exceeds available balance. Enter an amount no greater than the Savings available balance.",
+          );
+        }
+        if (cents > TELLER_LIMIT_CENTS) {
+          return pages.supervisorOverridePage(
+            member,
+            link(session, { screen: "authorize", memberId, draft }),
+            cents,
+            TELLER_LIMIT_CENTS,
+          );
+        }
+        return review(draft);
+      }
+      case "authorize": {
+        if (button === "Cancel") return showForm(action.draft);
+        const supervisor = (form.get("f1") ?? "").trim().toUpperCase();
+        if (!supervisor || form.get("f2") !== config.supervisorCode) {
+          return pages.supervisorOverridePage(
+            member,
+            link(session, { screen: "authorize", memberId, draft: action.draft }),
+            parseCents(action.draft.deposit)!,
+            TELLER_LIMIT_CENTS,
+            "Override code not accepted.",
+          );
+        }
+        return review({ ...action.draft, override: supervisor });
+      }
+      case "confirm": {
+        if (button === "Back") return showForm(action.draft);
+        if (button !== "Confirm") return profile();
+        const receipt = commit(member, action.draft, parseCents(action.draft.deposit)!);
+        if (faults.commitThen500) {
+          faults = { ...faults, commitThen500: undefined };
+          return applicationError();
+        }
+        return pages.confirmationPage(
+          member,
+          link(session, { screen: "profile", memberId }),
+          receipt,
+        );
+      }
+      default:
+        return pages.messagePage("CoreServ", "Not found.");
+    }
+  };
+
+  const render = (session: Session, action: Action, form: URLSearchParams): Rendered => {
     switch (action.screen) {
       case "login":
         return pages.loginPage(link(session, { screen: "login" }));
@@ -94,11 +261,26 @@ export async function startCoreServ(
             "Access restricted. Employee accounts require Member Services authorization.",
           );
         }
-        return pages.profilePage(member);
+        return pages.profilePage(
+          member,
+          link(session, { screen: "subaccount", memberId: member.id }),
+        );
       }
+      case "subaccount":
+      case "continue":
+      case "authorize":
+      case "confirm":
+        return subAccount(session, action, form);
       case "acknowledge":
         return render(session, action.then, new URLSearchParams(action.form));
     }
+  };
+
+  /** Disarms and reports a fault armed on this action's screen, so it fires once. */
+  const fireOn = (fault: ScreenFault, action: Action): boolean => {
+    if (faults[fault] !== action.screen) return false;
+    faults = { ...faults, [fault]: undefined };
+    return true;
   };
 
   /** Fires a fault armed on this screen, once. Returns the page shown instead, if any. */
@@ -107,23 +289,13 @@ export async function startCoreServ(
     action: Action,
     form: URLSearchParams,
   ): { status: number; body: string } | undefined => {
-    const fire = (fault: (typeof SCREEN_FAULTS)[number]): boolean => {
-      if (faults[fault] !== action.screen) return false;
-      faults = { ...faults, [fault]: undefined };
-      return true;
-    };
+    const fire = (fault: ScreenFault) => fireOn(fault, action);
     if (fire("expireSession")) {
       session.authenticated = false;
       session.expired = true;
       return { status: 200, body: pages.sessionExpiredPage() };
     }
-    if (fire("error500")) {
-      const reference = randomBytes(4).toString("hex").toUpperCase();
-      return {
-        status: 500,
-        body: pages.applicationErrorPage(`${reference.slice(0, 4)}-${reference.slice(4)}`),
-      };
-    }
+    if (fire("error500")) return applicationError();
     if (fire("notice")) {
       const acknowledge = link(session, {
         screen: "acknowledge",
@@ -159,7 +331,8 @@ export async function startCoreServ(
         res.writeHead(400, { "content-type": "text/plain" });
         res.end(
           `Expected JSON like {"latencyMs": 300} (0 to ${MAX_LATENCY_MS}) or ` +
-            `{"notice": "search"}; screen faults take one of ${WORKAREA_SCREENS.join(", ")} or null`,
+            `{"notice": "search"}; screen faults (${SCREEN_FAULTS.join(", ")}) take one of ` +
+            `${WORKAREA_SCREENS.join(", ")} or null; {"commitThen500": true}`,
         );
         return;
       }
@@ -184,8 +357,7 @@ export async function startCoreServ(
     }
 
     if (url.pathname === "/") {
-      if (!session.authenticated)
-        return html(render(session, { screen: "login" }, new URLSearchParams()));
+      if (!session.authenticated) return html(pages.loginPage(link(session, { screen: "login" })));
       return html(
         pages.shellPage({
           banner: link(session, { screen: "banner" }),
@@ -221,7 +393,10 @@ export async function startCoreServ(
     }
     const shown = interrupt(session, action, form);
     if (shown) return html(shown.body, shown.status);
-    return html(render(session, action, form));
+    const alert = fireOn("dialog", action);
+    const page = render(session, action, form);
+    const { body, status } = typeof page === "string" ? { body: page, status: 200 } : page;
+    return html(alert ? pages.withAlert(body, PASSWORD_ALERT) : body, status);
   };
 
   const server = createServer((req, res) => {
@@ -260,6 +435,9 @@ function parseFaults(body: string): Partial<Faults> | undefined {
         value <= MAX_LATENCY_MS;
       if (!valid) return undefined;
       update.latencyMs = value;
+    } else if (key === "commitThen500") {
+      if (typeof value !== "boolean" && value !== null) return undefined;
+      update.commitThen500 = value === true ? true : undefined;
     } else if ((SCREEN_FAULTS as readonly string[]).includes(key)) {
       // null disarms the fault.
       if (value !== null && !(WORKAREA_SCREENS as readonly unknown[]).includes(value)) {

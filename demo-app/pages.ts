@@ -145,15 +145,13 @@ ${body}
   );
 }
 
-export function profilePage(member: Member): string {
-  const label = (text: string) => `<td bgcolor="#D4D0C8"><font ${FONT}><b>${text}</b></font></td>`;
-  const value = (text: string) => `<td><font ${FONT}>${esc(text)}</font></td>`;
+export function profilePage(member: Member, openSubAccount: string): string {
   const accounts = member.accounts
     .map(
       (a) => `<tr>
-${value(a.number)}${value(a.type)}
+${valueCell(a.number)}${valueCell(a.type)}
 <td align="right"><font ${FONT}>${formatMoney(a.balanceCents)}</font></td>
-${value(a.opened)}
+${valueCell(a.opened)}
 </tr>`,
     )
     .join("\n");
@@ -161,20 +159,176 @@ ${value(a.opened)}
     "Member Profile",
     `<table border="0" cellpadding="0" cellspacing="8">
 <tr><td>
-<table border="1" cellpadding="3" cellspacing="0">
-<tr>${label("Member No")}${value(member.id)}${label("Status")}${value(member.status)}</tr>
-<tr>${label("Name")}${value(`${member.firstName} ${member.lastName}`)}${label("Branch")}${value(member.branch)}</tr>
-</table>
+${memberHeader(member)}
 </td></tr>
 <tr><td>
 <font ${FONT}><b>Accounts</b></font><br>
 <table border="1" cellpadding="3" cellspacing="0">
-<tr>${["Account No", "Type", "Balance", "Opened"].map(label).join("")}</tr>
+<tr>${["Account No", "Type", "Balance", "Opened"].map(labelCell).join("")}</tr>
 ${accounts}
 </table>
 </td></tr>
+<tr><td>
+<form method="post" action="${openSubAccount}"><input type="submit" value="Open Sub-Account"></form>
+</td></tr>
 </table>`,
   );
+}
+
+const labelCell = (text: string) =>
+  `<td bgcolor="#D4D0C8"><font ${FONT}><b>${esc(text)}</b></font></td>`;
+const valueCell = (text: string) => `<td><font ${FONT}>${esc(text)}</font></td>`;
+const plain = (text: string) => `<font ${FONT}>${esc(text)}</font>`;
+const error = (text: string) => `<font ${FONT} color="#CC0000">${esc(text)}</font><br><br>`;
+
+function memberHeader(member: Member): string {
+  return `<table border="1" cellpadding="3" cellspacing="0">
+<tr>${labelCell("Member No")}${valueCell(member.id)}${labelCell("Status")}${valueCell(member.status)}</tr>
+<tr>${labelCell("Name")}${valueCell(`${member.firstName} ${member.lastName}`)}${labelCell("Branch")}${valueCell(member.branch)}</tr>
+</table>`;
+}
+
+/** A two-column table of bold label cells and value cells, as on Review and Confirmation. */
+function detailsTable(heading: string, rows: [string, string][]): string {
+  return `<font ${FONT}><b>${esc(heading)}</b></font><br>
+<table border="1" cellpadding="3" cellspacing="0" width="372">
+${rows.map(([name, text]) => `<tr>${labelCell(name)}${valueCell(text)}</tr>`).join("\n")}
+</table>`;
+}
+
+const buttons = (...names: string[]): string =>
+  names.map((name) => `<input type="submit" name="b" value="${esc(name)}">`).join(" ");
+
+export const ACCOUNT_TYPES = ["Club Savings", "Money Market", "Certificate"] as const;
+
+/** What the operator has entered for a new sub-account, carried from screen to screen. */
+export type Draft = {
+  accountType: string;
+  nickname: string;
+  deposit: string;
+  /** Supervisor ID once an override has been authorized. */
+  override?: string;
+};
+
+export function subAccountFormPage(
+  member: Member,
+  action: string,
+  availableCents: number,
+  draft?: Draft,
+  message?: string,
+): string {
+  const options = ["", ...ACCOUNT_TYPES]
+    .map(
+      (type) =>
+        `<option value="${esc(type)}"${draft?.accountType === type ? " selected" : ""}>${esc(type || "-- Select --")}</option>`,
+    )
+    .join("");
+  const row = (name: string, field: string, hint = "") =>
+    `<tr><td width="140">${plain(name)}</td><td>${field}</td><td>${hint ? plain(hint) : "&nbsp;"}</td></tr>`;
+  return workarea(
+    "Open Sub-Account",
+    `${memberHeader(member)}<br>
+${message ? error(message) : ""}${plain("Complete the fields below and select Continue. The opening deposit is transferred from the member's Savings account.")}<br>
+${plain("Fields marked * are required.")}<br><br>
+<form method="post" action="${action}">
+<table border="0" cellpadding="3" cellspacing="0">
+${row("Account Type *", `<select name="f1">${options}</select>`)}
+${row("Nickname *", `<input type="text" name="f2" size="24" maxlength="20" value="${esc(draft?.nickname ?? "")}">`, "(max 20 characters)")}
+${row("Opening Deposit *", `<input type="text" name="f3" size="12" value="${esc(draft?.deposit ?? "")}">`, "USD, no $ sign or commas")}
+<tr><td>${plain("Funded From")}</td><td>${plain("Savings")}</td><td>${plain("Available Balance")} &nbsp; ${plain(formatMoney(availableCents))}</td></tr>
+<tr><td>&nbsp;</td><td colspan="2">${buttons("Continue", "Cancel")}</td></tr>
+</table>
+</form>`,
+  );
+}
+
+export function supervisorOverridePage(
+  member: Member,
+  action: string,
+  amountCents: number,
+  limitCents: number,
+  message?: string,
+): string {
+  return workarea(
+    "Supervisor Override Required",
+    `${memberHeader(member)}<br>
+<form method="post" action="${action}">
+<table border="1" cellpadding="8" cellspacing="0" bgcolor="#FFFFE1" width="560">
+<tr><td>
+<font ${FONT}><b>Teller limit exceeded</b></font><br><br>
+${message ? error(message) : ""}${plain("The opening deposit exceeds your teller limit. A supervisor must enter their ID and override code at this workstation to continue.")}<br><br>
+<table border="1" cellpadding="3" cellspacing="0" bgcolor="#FFFFFF">
+<tr>${labelCell("Transaction")}${valueCell("Open Sub-Account")}</tr>
+<tr>${labelCell("Amount")}${valueCell(formatMoney(amountCents))}</tr>
+<tr>${labelCell("Teller Limit")}${valueCell(formatMoney(limitCents))}</tr>
+</table><br>
+<table border="0" cellpadding="3" cellspacing="0">
+<tr><td width="120">${plain("Supervisor ID")}</td><td><input type="text" name="f1" size="12"></td></tr>
+<tr><td>${plain("Override Code")}</td><td><input type="password" name="f2" size="12"></td></tr>
+<tr><td>&nbsp;</td><td>${buttons("Authorize", "Cancel")}</td></tr>
+</table>
+</td></tr>
+</table>
+</form>`,
+  );
+}
+
+export function reviewPage(
+  member: Member,
+  action: string,
+  draft: Draft,
+  depositCents: number,
+): string {
+  return workarea(
+    "Review Sub-Account",
+    `${plain("Verify the details below with the member, then select Confirm to open the account.")}<br>
+<font ${FONT}><b>Once confirmed, the account is opened and the deposit is posted. This cannot be undone from this screen.</b></font><br><br>
+${detailsTable("Pending Transaction", [
+  ["Member No", member.id],
+  ["Member Name", `${member.firstName} ${member.lastName}`],
+  ["Transaction", "Open Sub-Account"],
+  ["Account Type", draft.accountType],
+  ["Nickname", draft.nickname],
+  ["Opening Deposit", formatMoney(depositCents)],
+  ["Funded From", "Savings"],
+  ["Supervisor Override", draft.override ? `Approved (${draft.override})` : "Not required"],
+])}<br>
+<form method="post" action="${action}">${buttons("Confirm", "Back", "Cancel")}</form>`,
+  );
+}
+
+export function confirmationPage(
+  member: Member,
+  action: string,
+  receipt: {
+    accountNumber: string;
+    draft: Draft;
+    depositCents: number;
+    reference: string;
+    posted: string;
+  },
+): string {
+  return workarea(
+    "Sub-Account Confirmation",
+    `<font ${FONT} color="#006400"><b>Sub-account opened.</b></font><br>
+${plain("The opening deposit has been posted. Give the member the confirmation reference below.")}<br><br>
+${detailsTable("Transaction Receipt", [
+  ["Member No", member.id],
+  ["New Account No", receipt.accountNumber],
+  ["Account Type", receipt.draft.accountType],
+  ["Nickname", receipt.draft.nickname],
+  ["Opening Deposit", formatMoney(receipt.depositCents)],
+  ["Funded From", "Savings"],
+  ["Confirmation Ref", receipt.reference],
+  ["Posted", receipt.posted],
+])}<br>
+<form method="post" action="${action}"><input type="submit" value="Return to Member Profile"></form>`,
+  );
+}
+
+/** A native alert raised as the page loads, as some legacy apps do for operator notices. */
+export function withAlert(html: string, message: string): string {
+  return html.replace("</body>", `<script>alert(${JSON.stringify(message)});</script>\n</body>`);
 }
 
 export function messagePage(heading: string, message: string): string {

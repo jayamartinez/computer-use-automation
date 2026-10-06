@@ -60,9 +60,9 @@ Data read by several components: app profile, tenant binding.
 **Done when:** a person can log in and look up 10042 and 10077 by hand; 99999 shows "No members match"; 10200 shows "Access restricted"; the markup has no IDs, labels or test IDs; URLs do not reveal state; `demo-app/` imports nothing from `src/`.
 
 ### M3. Demo app, write path and faults — `feat(app): sub-account flow, supervisor override, fault injection`
-- [ ] Sub-Account Form, Review, Confirmation; insufficient-funds rule; supervisor override above $2,500; System Notice, Session Expired, Application Error; fault endpoint including `commitThen500`.
+- [x] Sub-Account Form, Review, Confirmation; insufficient-funds rule; supervisor override above $2,500; System Notice, Session Expired, Application Error; fault endpoint including `commitThen500` and `dialog`.
 
-**Partly done.** System Notice, Session Expired and Application Error are built from the approved mockups (artboards 7 to 9), along with the `notice`, `expireSession`, `error500` and `latencyMs` faults. Still to do, from the mockups approved on 2026-10-05 (artboards 10 to 16): the Open Sub-Account button, form, Review and Confirmation; the insufficient-funds rule; Supervisor Override; the `commitThen500` and `dialog` faults. Three commits: `feat(app): sub-account form, review and confirmation`, `feat(app): supervisor override screen`, `feat(app): commitThen500 and dialog faults`.
+**Done (2026-10-05).** The interruption screens and their faults came first (3554a52). The rest is built from the mockups approved on 2026-10-05 (artboards 10 to 16) in one commit rather than the three proposed: the override is a branch inside Continue and both new faults hook into the same request handler, so the split commits would have recorded states that never existed. The supervisor code comes from `CORESERV_SUPERVISOR_CODE`.
 
 **Done when:** every screen and branch in `docs/DESIGN.md` §1–2 is reachable by hand, each fault can be switched on and observed, and no text from the Paper notes artboards appears in any rendered page.
 
@@ -234,3 +234,5 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 | 2026-10-05 | M8 | ae8065d, 466d2e7, 3554a52 | Outcomes, recoveries, failure evidence; real-app scenarios after the three interruption screens |
 | 2026-10-05 | M3 (partial) | 3554a52 | System Notice, Session Expired, Application Error; notice, expireSession, error500 and latencyMs faults |
 | 2026-10-05 | — | 6adc113, 9a24d74, f4f95e0 | `frame` renamed to `scope` (D15); path allowlist; names and balances masked in evidence (D16) |
+| 2026-10-05 | — | d98f498 | Write-path, dialog and handoff design approved (D16 update, D17–D21); branch `feat/write-path-handoff` |
+| 2026-10-05 | M3 | (this commit) | Sub-account flow, supervisor override, `commitThen500` and `dialog` faults |
