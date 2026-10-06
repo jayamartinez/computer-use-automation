@@ -12,6 +12,7 @@ import type { Target } from "../target.ts";
 import {
   DIALOG_SCOPE,
   type Handle,
+  type HumanAction,
   type MaskRule,
   type Observation,
   type ObservedElement,
@@ -20,6 +21,46 @@ import {
   type Surface,
   type SurfaceAction,
 } from "../types.ts";
+
+/*
+ * Runs in every document, in every frame, from the moment it loads. It reports the control a
+ * person used (role, the name an operator sees, the frame), never what was typed. Reports are
+ * dropped on the Node side unless a takeover is active, so automation's own clicks never count.
+ */
+function captureHumanActions(): void {
+  const report = (kind: string, target: EventTarget | null) => {
+    const el = (target as Element | null)?.closest?.("a, button, input, select, textarea");
+    if (!el) return;
+    const input = el instanceof HTMLInputElement ? el : null;
+    const isButton =
+      el instanceof HTMLButtonElement ||
+      (input !== null && ["submit", "button", "reset"].includes(input.type));
+    const role =
+      el instanceof HTMLAnchorElement
+        ? "link"
+        : isButton
+          ? "button"
+          : el instanceof HTMLSelectElement
+            ? "combobox"
+            : "textbox";
+    // A field is named the way an operator would: by the label cell to its left.
+    const label = (el.closest("td")?.previousElementSibling as HTMLElement | null)?.innerText;
+    const name = isButton
+      ? (input?.value ?? (el as HTMLElement).innerText)
+      : role === "link"
+        ? (el as HTMLElement).innerText
+        : (label ?? "");
+    const scope = window.name ? [window.name] : [];
+    (window as unknown as Record<string, (a: unknown) => void>).__coreservHumanAction?.({
+      kind,
+      role,
+      name: name.replace(/\s+/g, " ").trim(),
+      scope,
+    });
+  };
+  document.addEventListener("click", (e) => report("click", e.target), true);
+  document.addEventListener("change", (e) => report("change", e.target), true);
+}
 
 export type LaunchOptions = {
   entryUrl: string;
@@ -116,6 +157,7 @@ export class PlaywrightSurface implements Surface {
   private dialog: Dialog | undefined;
   private dialogButtons = new Map<string, "accept" | "dismiss">();
   private readonly dialogWaiters = new Set<() => void>();
+  private humanListener: ((action: HumanAction) => void) | undefined;
 
   private constructor(
     private readonly browser: Browser,
@@ -125,6 +167,13 @@ export class PlaywrightSurface implements Surface {
     page.on("dialog", (dialog) => {
       this.dialog = dialog;
       for (const wake of this.dialogWaiters) wake();
+      this.humanListener?.({
+        kind: "dialog",
+        role: "dialog",
+        name: dialog.type(),
+        scope: [DIALOG_SCOPE],
+        message: dialog.message(),
+      });
     });
   }
 
@@ -143,9 +192,18 @@ export class PlaywrightSurface implements Surface {
         options.onBlocked?.(`${url.origin}${url.pathname}`);
         return route.abort("blockedbyclient");
       });
+      // Installed before anything loads, so every frame of every page can report a person's
+      // actions during a takeover.
+      const created: { surface?: PlaywrightSurface } = {};
+      await context.exposeBinding("__coreservHumanAction", (_source, action: HumanAction) =>
+        created.surface?.humanListener?.(action),
+      );
+      await context.addInitScript(captureHumanActions);
       const page = await context.newPage();
+      const surface = new PlaywrightSurface(browser, page);
+      created.surface = surface;
       await page.goto(options.entryUrl);
-      return new PlaywrightSurface(browser, page);
+      return surface;
     } catch (error) {
       await browser.close();
       throw error;
@@ -293,6 +351,13 @@ export class PlaywrightSurface implements Surface {
       default:
         return action satisfies never;
     }
+  }
+
+  async watchHuman(listener: (action: HumanAction) => void): Promise<() => Promise<void>> {
+    this.humanListener = listener;
+    return async () => {
+      if (this.humanListener === listener) this.humanListener = undefined;
+    };
   }
 
   async matches(signature: Signature): Promise<boolean> {

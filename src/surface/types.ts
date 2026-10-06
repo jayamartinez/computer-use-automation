@@ -58,7 +58,20 @@ export interface Surface {
   firstMatch(signatures: Signature[]): Promise<number | undefined>;
   /** A masked image of the screen, or undefined while a native dialog blocks capturing it. */
   screenshot(opts: { mask: MaskRule[] }): Promise<Buffer | undefined>;
+  /**
+   * Reports what a person does on the surface until the returned function is called. Only the
+   * control is reported, never a value typed into it.
+   */
+  watchHuman(listener: (action: HumanAction) => void): Promise<() => Promise<void>>;
 }
+
+/**
+ * One thing a person did during a takeover: which control, by role, name and scope. A dialog
+ * opening is reported too, with its message for the operator; the message is never logged.
+ */
+export type HumanAction =
+  | { kind: "click" | "change" | "submit"; role: string; name: string; scope: string[] }
+  | { kind: "dialog"; role: "dialog"; name: string; scope: string[]; message: string };
 
 /**
  * The container a native dialog (alert, confirm, prompt) is reported in. While one is open the
