@@ -154,7 +154,7 @@ describe("replay: open_subaccount against the real demo app", () => {
       expect(result.failure.observed).toContain("app_error");
       expect(events.filter((e) => e.event === "action" && e.stepId === "confirm")).toHaveLength(1);
       expect(events.some((e) => e.event === "restart")).toBe(false);
-      const screenshot = readFileSync(result.failure.evidence!.screenshot);
+      const screenshot = readFileSync(result.failure.evidence!.screenshot!);
       expect(screenshot.subarray(1, 4).toString()).toBe("PNG");
       expect(readFileSync(result.failure.evidence!.observation, "utf8")).toContain(
         "Application Error",

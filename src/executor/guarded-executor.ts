@@ -162,17 +162,25 @@ export class GuardedExecutor {
     }
   }
 
-  /** Saves a masked screenshot and a masked element dump for a failure report. */
-  async captureEvidence(name: string): Promise<{ screenshot: string; observation: string }> {
-    const { surface, masks, runDir } = this.options;
-    const screenshot = join(runDir, "screenshots", `${name}.png`);
+  /**
+   * Saves a masked screenshot (when the surface can take one) and a masked element dump. The
+   * dump also passes through the log's scrub list: free text such as a dialog's message is not
+   * covered by geometric mask rules.
+   */
+  async captureEvidence(name: string): Promise<{ screenshot?: string; observation: string }> {
+    const { surface, masks, runDir, log } = this.options;
     const observation = join(runDir, "observations", `${name}.json`);
-    await mkdir(join(runDir, "screenshots"), { recursive: true });
     await mkdir(join(runDir, "observations"), { recursive: true });
-    await writeFile(screenshot, await surface.screenshot({ mask: masks }));
+    const image = await surface.screenshot({ mask: masks });
+    let screenshot: string | undefined;
+    if (image) {
+      screenshot = join(runDir, "screenshots", `${name}.png`);
+      await mkdir(join(runDir, "screenshots"), { recursive: true });
+      await writeFile(screenshot, image);
+    }
     const masked = maskObservation(await surface.observe(), masks);
-    await writeFile(observation, `${JSON.stringify(masked, null, 2)}\n`);
-    return { screenshot, observation };
+    await writeFile(observation, `${log.scrubText(JSON.stringify(masked, null, 2))}\n`);
+    return { ...(screenshot ? { screenshot } : {}), observation };
   }
 }
 

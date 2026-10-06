@@ -143,7 +143,7 @@ describe("saved evidence masking on every CoreServ screen", () => {
     const masked = maskedElements(observation.elements, profile.masks);
     expect(masked.some((e) => e.scope[0] === "banner" && e.text.includes("Operator:"))).toBe(true);
     const png = await surface.screenshot({ mask: profile.masks });
-    expect(png.subarray(1, 4).toString()).toBe("PNG");
-    if (process.env.MASKING_SHOT) writeFileSync(process.env.MASKING_SHOT, png);
+    expect(png!.subarray(1, 4).toString()).toBe("PNG");
+    if (process.env.MASKING_SHOT) writeFileSync(process.env.MASKING_SHOT, png!);
   });
 });

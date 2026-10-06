@@ -86,7 +86,10 @@ const FailureSchema = z.strictObject({
   // human-confirmed commit (sideEffects "committed") is not mistaken for a verified success.
   outputsVerified: z.literal(false),
   // Absent when the run failed before a screen existed (invalid input, preflight denial).
-  evidence: z.strictObject({ screenshot: z.string(), observation: z.string() }).optional(),
+  // The screenshot is absent while a native dialog blocks the page; the observation holds it.
+  evidence: z
+    .strictObject({ screenshot: z.string().optional(), observation: z.string() })
+    .optional(),
 });
 export type Failure = z.infer<typeof FailureSchema>;
 

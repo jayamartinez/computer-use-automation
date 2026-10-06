@@ -32,10 +32,13 @@ export class RunLog {
     this.sink(JSON.stringify(this.scrub(entry)));
   }
 
+  /** Applies the same backstop to text saved outside the log, such as an observation dump. */
+  scrubText(text: string): string {
+    return this.scrubs.reduce((result, s) => result.replaceAll(s.value, s.replacement), text);
+  }
+
   private scrub(value: unknown): unknown {
-    if (typeof value === "string") {
-      return this.scrubs.reduce((text, s) => text.replaceAll(s.value, s.replacement), value);
-    }
+    if (typeof value === "string") return this.scrubText(value);
     if (Array.isArray(value)) return value.map((item) => this.scrub(item));
     if (value !== null && typeof value === "object") {
       return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, this.scrub(v)]));

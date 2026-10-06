@@ -132,7 +132,9 @@ describe("replay: lookup_balance against the real demo app", () => {
     });
     if (result.status !== "failure") throw new Error("unreachable");
     expect(result.failure.expected).toContain("savings_balance_cell");
-    expect(readFileSync(result.failure.evidence!.screenshot).subarray(1, 4).toString()).toBe("PNG");
+    expect(readFileSync(result.failure.evidence!.screenshot!).subarray(1, 4).toString()).toBe(
+      "PNG",
+    );
     // The profile screen was captured, with the account numbers masked out of the dump.
     const observation = readFileSync(result.failure.evidence!.observation, "utf8");
     expect(observation).toContain("Member Profile");
@@ -284,7 +286,7 @@ describe("replay: profile conditions against the real demo app", () => {
         },
       });
       if (result.status !== "failure") throw new Error("unreachable");
-      expect(readFileSync(result.failure.evidence!.screenshot).subarray(1, 4).toString()).toBe(
+      expect(readFileSync(result.failure.evidence!.screenshot!).subarray(1, 4).toString()).toBe(
         "PNG",
       );
       expect(readFileSync(result.failure.evidence!.observation, "utf8")).toContain(

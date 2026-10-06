@@ -134,7 +134,7 @@ describe("replay: lookup_balance against the fake surface", () => {
     });
     if (result.status !== "failure") throw new Error("unreachable");
     expect(result.failure.observed).toContain("2 elements matched");
-    expect(existsSync(result.failure.evidence!.screenshot)).toBe(true);
+    expect(existsSync(result.failure.evidence!.screenshot!)).toBe(true);
     expect(
       JSON.parse(readFileSync(result.failure.evidence!.observation, "utf8")).elements.length,
     ).toBeGreaterThan(0);
@@ -316,7 +316,7 @@ describe("replay: profile conditions", () => {
       },
     });
     if (result.status !== "failure") throw new Error("unreachable");
-    expect(existsSync(result.failure.evidence!.screenshot)).toBe(true);
+    expect(existsSync(result.failure.evidence!.screenshot!)).toBe(true);
   });
 
   it("explains a missing control by the condition on screen rather than as drift", async () => {

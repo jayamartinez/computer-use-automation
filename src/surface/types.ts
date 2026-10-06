@@ -56,5 +56,14 @@ export interface Surface {
    * state race has a single, ordered answer for one moment of the screen.
    */
   firstMatch(signatures: Signature[]): Promise<number | undefined>;
-  screenshot(opts: { mask: MaskRule[] }): Promise<Buffer>;
+  /** A masked image of the screen, or undefined while a native dialog blocks capturing it. */
+  screenshot(opts: { mask: MaskRule[] }): Promise<Buffer | undefined>;
 }
+
+/**
+ * The container a native dialog (alert, confirm, prompt) is reported in. While one is open the
+ * surface reports only the dialog: its message as text and its buttons ("OK", and "Cancel" when
+ * it has one). Clicking "OK" accepts it and "Cancel" dismisses it. A surface never answers one by
+ * itself.
+ */
+export const DIALOG_SCOPE = "dialog";
