@@ -9,8 +9,7 @@ export const RiskSchema = z.enum(["read", "reversible", "irreversible"]);
 export type Risk = z.infer<typeof RiskSchema>;
 export const riskRank = (risk: Risk): number => RiskSchema.options.indexOf(risk);
 
-// The full vocabulary policy can allow. Steps for `select` and `assert` arrive with the
-// write-path capability; until then an artifact cannot contain them.
+// The full vocabulary policy can allow.
 export const ActionTypeSchema = z.enum(["click", "fill", "select", "extract", "assert"]);
 export type ActionType = z.infer<typeof ActionTypeSchema>;
 
@@ -40,14 +39,19 @@ const InputSchema = z.strictObject({
 });
 export type InputSpec = z.infer<typeof InputSchema>;
 
-const OutputSchema = z.strictObject({ ...valueSpec, fromStep: z.string() });
+const OutputSchema = z.strictObject({
+  ...valueSpec,
+  // The extracted text must match, so a value that merely parses cannot pass as an output.
+  pattern: z.string().optional(),
+  fromStep: z.string(),
+});
 export type OutputSpec = z.infer<typeof OutputSchema>;
 
 // Content predicates. Targets are referenced by name; values may be templated.
 export type ArtifactSignature =
   | { textPresent: string; scope?: string[] }
   | { resolvable: string }
-  | { cellEquals: { target: string; value: string } }
+  | { cellEquals: { target: string; value: string; as?: "money" } }
   | { all: ArtifactSignature[] }
   | { any: ArtifactSignature[] };
 
@@ -55,7 +59,14 @@ export const SignatureSchema: z.ZodType<ArtifactSignature> = z.lazy(() =>
   z.union([
     z.strictObject({ textPresent: z.string().min(1), scope: ScopePathSchema.optional() }),
     z.strictObject({ resolvable: z.string() }),
-    z.strictObject({ cellEquals: z.strictObject({ target: z.string(), value: z.string() }) }),
+    z.strictObject({
+      // `as: "money"` compares amounts, so an input of 500.00 equals a screen's $500.00.
+      cellEquals: z.strictObject({
+        target: z.string(),
+        value: z.string(),
+        as: z.literal("money").optional(),
+      }),
+    }),
     z.strictObject({ all: z.array(SignatureSchema).min(1) }),
     z.strictObject({ any: z.array(SignatureSchema).min(1) }),
   ]),
@@ -65,17 +76,18 @@ export const SignatureSchema: z.ZodType<ArtifactSignature> = z.lazy(() =>
 const ExpectSchema = z.union([z.strictObject({ valueEquals: z.string() }), SignatureSchema]);
 export type Expect = z.infer<typeof ExpectSchema>;
 
-const stepCommon = {
+const stepBase = {
   id: z.string().regex(/^[a-z][a-z0-9_]*$/),
   intent: z.string().min(1),
-  target: z.string(),
   risk: RiskSchema,
   timeoutMs: z.number().int().positive(),
   retry: z.strictObject({ max: z.number().int().min(0) }),
   onTimeout: z.literal("outcome_unknown").optional(),
 };
+const stepCommon = { ...stepBase, target: z.string() };
 
-// Every state-changing step states what the screen must look like afterwards.
+// Every state-changing step states what the screen must look like afterwards. An `assert`
+// acts on nothing: it reads the screen and stops the run if the check does not hold.
 const StepSchema = z.discriminatedUnion("action", [
   z.strictObject({ ...stepCommon, action: z.literal("click"), expect: ExpectSchema }),
   z.strictObject({
@@ -84,7 +96,14 @@ const StepSchema = z.discriminatedUnion("action", [
     value: z.string(),
     expect: ExpectSchema,
   }),
+  z.strictObject({
+    ...stepCommon,
+    action: z.literal("select"),
+    value: z.string(),
+    expect: ExpectSchema,
+  }),
   z.strictObject({ ...stepCommon, action: z.literal("extract"), output: z.string() }),
+  z.strictObject({ ...stepBase, action: z.literal("assert"), check: SignatureSchema }),
 ]);
 export type Step = z.infer<typeof StepSchema>;
 
@@ -157,9 +176,12 @@ function checkReferences(artifact: Shape, ctx: z.RefinementCtx): void {
   artifact.steps.forEach((step, i) => {
     if (stepIds.has(step.id)) issue(["steps", i, "id"], `Duplicate step id "${step.id}"`);
     stepIds.add(step.id);
-    targetExists(step.target, ["steps", i, "target"]);
+    if ("target" in step) targetExists(step.target, ["steps", i, "target"]);
     if ("expect" in step) {
       for (const name of signatureTargets(step.expect)) targetExists(name, ["steps", i, "expect"]);
+    }
+    if (step.action === "assert") {
+      for (const name of signatureTargets(step.check)) targetExists(name, ["steps", i, "check"]);
     }
     if (step.action === "extract" && !(step.output in artifact.outputs)) {
       issue(["steps", i, "output"], `Step extracts undeclared output "${step.output}"`);
@@ -173,6 +195,10 @@ function checkReferences(artifact: Shape, ctx: z.RefinementCtx): void {
           ["steps", i, "onTimeout"],
           'An irreversible step must set onTimeout: "outcome_unknown"',
         );
+      }
+      // The pre-commit read-back: the screen must be checked against the inputs right before.
+      if (artifact.steps[i - 1]?.action !== "assert") {
+        issue(["steps", i], "An irreversible step must come immediately after an assert step");
       }
     }
   });
@@ -223,7 +249,8 @@ function checkReferences(artifact: Shape, ctx: z.RefinementCtx): void {
     if (riskRank(step.risk) > riskRank(requires.maxRisk)) {
       issue(["requires", "maxRisk"], `Step "${step.id}" exceeds declared maxRisk`);
     }
-    for (const scope of artifact.targets[step.target]?.scope ?? []) {
+    const scopes = "target" in step ? (artifact.targets[step.target]?.scope ?? []) : [];
+    for (const scope of scopes) {
       if (!requires.scopes.includes(scope)) {
         issue(["steps", i, "target"], `Step "${step.id}" acts in undeclared scope "${scope}"`);
       }

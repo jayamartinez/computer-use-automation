@@ -2,13 +2,18 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { loadArtifact } from "../artifact/store.ts";
+import { TerminalChannel } from "../handoff/terminal-channel.ts";
 import { loadProfile, loadTenant, resolveSecrets } from "../profile/load.ts";
 import { runReplay } from "../replay/run.ts";
 
 const USAGE = `Usage:
-  replay <capability-id | artifact.json> --input name=value [--input ...] [--tenant lakeside] [--headed]
+  replay <capability-id | artifact.json> --input name=value [--input ...] [--tenant lakeside]
+         [--headed] [--allow-irreversible] [--operator]
 
-A capability id is looked up in capabilities/<id>.json.`;
+A capability id is looked up in capabilities/<id>.json. --allow-irreversible lets an approved
+artifact run its irreversible steps unattended; a draft never does. --operator puts
+escalations, approvals and unknown outcomes to you in this terminal, with the same browser
+window opened for you to work in.`;
 
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
@@ -23,6 +28,8 @@ async function main(): Promise<number> {
       input: { type: "string", multiple: true, default: [] },
       tenant: { type: "string", default: "lakeside" },
       headed: { type: "boolean", default: false },
+      "allow-irreversible": { type: "boolean", default: false },
+      operator: { type: "boolean", default: false },
     },
   });
   const [capability] = positionals;
@@ -46,17 +53,24 @@ async function main(): Promise<number> {
     inputs[pair.slice(0, separator)] = pair.slice(separator + 1);
   }
 
-  const result = await runReplay({
-    artifact,
-    inputs,
-    profile,
-    tenant,
-    secrets: resolveSecrets(tenant, process.env),
-    runsDir: "runs",
-    headed: values.headed,
-  });
-  console.log(JSON.stringify(result, null, 2));
-  return result.status === "failure" ? 1 : 0;
+  const channel = values.operator ? new TerminalChannel() : undefined;
+  try {
+    const result = await runReplay({
+      artifact,
+      inputs,
+      profile,
+      tenant,
+      secrets: resolveSecrets(tenant, process.env),
+      runsDir: "runs",
+      headed: values.headed || values.operator,
+      allowIrreversible: values["allow-irreversible"],
+      ...(channel ? { channel } : {}),
+    });
+    console.log(JSON.stringify(result, null, 2));
+    return result.status === "failure" ? 1 : 0;
+  } finally {
+    channel?.close();
+  }
 }
 
 main().then(

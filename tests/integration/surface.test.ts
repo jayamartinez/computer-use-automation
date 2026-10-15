@@ -147,7 +147,7 @@ describe("PlaywrightSurface against CoreServ", () => {
 
   it("masks account numbers in screenshots and never reports a password value", async () => {
     const png = await surface.screenshot({ mask: [{ label: "Account No", where: "below" }] });
-    expect(png.subarray(1, 4).toString()).toBe("PNG");
+    expect(png!.subarray(1, 4).toString()).toBe("PNG");
 
     const login = await PlaywrightSurface.launch({ entryUrl: app.url, allowRequest });
     try {

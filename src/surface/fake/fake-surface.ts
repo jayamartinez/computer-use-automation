@@ -3,6 +3,7 @@ import { firstMatching, matchesSignature, resolveTarget } from "../resolve.ts";
 import type { Target } from "../target.ts";
 import type {
   Handle,
+  HumanAction,
   Observation,
   ObservedElement,
   Resolution,
@@ -64,5 +65,34 @@ export class FakeSurface<State> implements Surface {
 
   async screenshot(): Promise<Buffer> {
     return Buffer.from("fake-surface");
+  }
+
+  private humanListener: ((action: HumanAction) => void) | undefined;
+  /** What a person did, recorded apart from `actions`, which are automation's. */
+  readonly humanActions: { element: FakeElement; action: SurfaceAction }[] = [];
+
+  async watchHuman(listener: (action: HumanAction) => void): Promise<() => Promise<void>> {
+    this.humanListener = listener;
+    return async () => {
+      if (this.humanListener === listener) this.humanListener = undefined;
+    };
+  }
+
+  /**
+   * A scripted person acting on the same session, outside the guarded executor, as a real
+   * operator would. The value typed is applied but never reported.
+   */
+  async actAsHuman(target: Target, action: SurfaceAction): Promise<void> {
+    const found = resolveTarget((await this.observe()).elements, target);
+    if (found.kind !== "unique") throw new Error(`Human could not find ${JSON.stringify(target)}`);
+    const { ref: _ref, ...element } = found.element;
+    this.humanActions.push({ element, action });
+    this.humanListener?.({
+      kind: action.kind === "click" ? "click" : "change",
+      role: element.role,
+      name: element.name,
+      scope: element.scope,
+    });
+    this.state = this.app.reduce(this.state, element, action);
   }
 }

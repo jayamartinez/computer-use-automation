@@ -29,7 +29,9 @@ export type ActionRequest = {
 export type ActionResult =
   | { status: "done"; element: ObservedElement; strategyIndex: number }
   | { status: "denied"; rule: string; reason: string }
-  | { status: "unresolved"; kind: "none" | "ambiguous"; count: number };
+  | { status: "unresolved"; kind: "none" | "ambiguous"; count: number }
+  // The surface was told to act and failed part-way. Whatever the action does may have happened.
+  | { status: "dispatch_error"; message: string };
 
 export type ExecutorOptions = {
   surface: Surface;
@@ -91,22 +93,33 @@ export class GuardedExecutor {
       return { status: "unresolved", kind: resolution.kind, count };
     }
 
-    switch (request.action) {
-      case "click":
-        await surface.act(resolution.handle, { kind: "click" });
-        break;
-      case "fill":
-      case "select":
-        await surface.act(resolution.handle, {
-          kind: request.action,
-          value: request.value?.actual ?? "",
-        });
-        break;
-      case "extract":
-        // Reading is the resolution itself; the caller takes the text from the element.
-        break;
-      default:
-        request.action satisfies never;
+    // An irreversible action counts as dispatched from here on, before the surface acts: an
+    // error while acting cannot prove that nothing was committed.
+    if (request.risk === "irreversible") {
+      log.write("dispatch_irreversible", { ...base, epoch: request.epoch });
+    }
+    try {
+      switch (request.action) {
+        case "click":
+          await surface.act(resolution.handle, { kind: "click" });
+          break;
+        case "fill":
+        case "select":
+          await surface.act(resolution.handle, {
+            kind: request.action,
+            value: request.value?.actual ?? "",
+          });
+          break;
+        case "extract":
+          // Reading is the resolution itself; the caller takes the text from the element.
+          break;
+        default:
+          request.action satisfies never;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message.split("\n")[0]! : String(error);
+      log.write("action_error", { ...base, message });
+      return { status: "dispatch_error", message };
     }
     log.write("action", {
       ...base,
@@ -149,17 +162,25 @@ export class GuardedExecutor {
     }
   }
 
-  /** Saves a masked screenshot and a masked element dump for a failure report. */
-  async captureEvidence(name: string): Promise<{ screenshot: string; observation: string }> {
-    const { surface, masks, runDir } = this.options;
-    const screenshot = join(runDir, "screenshots", `${name}.png`);
+  /**
+   * Saves a masked screenshot (when the surface can take one) and a masked element dump. The
+   * dump also passes through the log's scrub list: free text such as a dialog's message is not
+   * covered by geometric mask rules.
+   */
+  async captureEvidence(name: string): Promise<{ screenshot?: string; observation: string }> {
+    const { surface, masks, runDir, log } = this.options;
     const observation = join(runDir, "observations", `${name}.json`);
-    await mkdir(join(runDir, "screenshots"), { recursive: true });
     await mkdir(join(runDir, "observations"), { recursive: true });
-    await writeFile(screenshot, await surface.screenshot({ mask: masks }));
+    const image = await surface.screenshot({ mask: masks });
+    let screenshot: string | undefined;
+    if (image) {
+      screenshot = join(runDir, "screenshots", `${name}.png`);
+      await mkdir(join(runDir, "screenshots"), { recursive: true });
+      await writeFile(screenshot, image);
+    }
     const masked = maskObservation(await surface.observe(), masks);
-    await writeFile(observation, `${JSON.stringify(masked, null, 2)}\n`);
-    return { screenshot, observation };
+    await writeFile(observation, `${log.scrubText(JSON.stringify(masked, null, 2))}\n`);
+    return { ...(screenshot ? { screenshot } : {}), observation };
   }
 }
 

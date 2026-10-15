@@ -28,6 +28,7 @@ export function inputProblem(value: string, spec: InputSpec): string | undefined
 /** Turns extracted screen text into a typed output, or undefined when it does not parse. */
 export function parseOutput(text: string, spec: OutputSpec): OutputValue | undefined {
   const raw = text.trim();
+  if (spec.pattern && !new RegExp(spec.pattern).test(raw)) return undefined;
   switch (spec.type) {
     case "string":
     case "date":

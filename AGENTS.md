@@ -67,11 +67,11 @@ Discovery and Replay both act only through:
 - **State is recognized by content, not URL.** The demo app uses opaque postback URLs on purpose.
 - **Safety is deterministic and outside the model.** Risk class comes from policy rules in the app profile (discovery) or the reviewed `risk` field on each step (replay). The model can never lower risk.
 - **Every action goes through the guarded executor.** Nothing else may touch the surface.
-- **Irreversible steps are never auto-retried.** If the outcome of a dispatched irreversible step cannot be determined, the result is `outcome_unknown` and a human decides.
+- **Irreversible steps are never auto-retried.** An irreversible step follows an `assert` read-back of what will be committed, is marked dispatched before the surface acts, and is never repeated or restarted. If its outcome cannot be determined, the result is `outcome_unknown` and a human decides. A human "committed" verdict is still a failure with `sideEffects: "committed"` and `outputsVerified: false`.
 
 ### Surface abstraction
 
-`Surface` exposes `observe()`, `resolve(target)` (unique | ambiguous | none), `act()`, `matches(signature)`, `firstMatch(signatures)`, `screenshot()`. Every target and signature names a **scope**: an ordered path of named containers that the surface defines (frames of a frameset on legacy web, window then pane on desktop, empty for a single-document page). The recorded flow never uses web-only vocabulary. Implementations: `PlaywrightSurface` (primary, legacy web with framesets) and `FakeSurface` (in-memory, for tests; proves the seam). A modern-web variant is one of the two stretch goals. Desktop is out of scope; the scope design argues for it in the report.
+`Surface` exposes `observe()`, `resolve(target)` (unique | ambiguous | none), `act()`, `matches(signature)`, `firstMatch(signatures)`, `screenshot()`, `watchHuman(listener)`. An open native dialog is reported as the container `["dialog"]` with its text and buttons; a surface never answers one by itself. Every target and signature names a **scope**: an ordered path of named containers that the surface defines (frames of a frameset on legacy web, window then pane on desktop, empty for a single-document page). The recorded flow never uses web-only vocabulary. Implementations: `PlaywrightSurface` (primary, legacy web with framesets) and `FakeSurface` (in-memory, for tests; proves the seam). A modern-web variant is one of the two stretch goals. Desktop is out of scope; the scope design argues for it in the report.
 
 ### Policy
 
@@ -79,7 +79,7 @@ Discovery and Replay both act only through:
 - Risk classes: `read`, `reversible`, `irreversible`. Profile lists safe and commit controls; an unknown button requires human approval during discovery.
 - Irreversible in discovery: always human approval. In replay: proceeds unattended only if the artifact is `approved` and the caller passes an explicit allow flag; otherwise an approval request is raised.
 - Artifacts declare `requires` (actions, max risk, scopes) so policy can reject them before anything runs.
-- Redaction: secrets never reach the model, trace, artifact or logs. Outputs are returned to the caller but logged masked by sensitivity. Sensitive regions are masked in screenshots. Human-typed values are never recorded.
+- Redaction: secrets never reach the model, trace, artifact or logs. Outputs are returned to the caller but logged masked by sensitivity. Sensitive regions (member numbers, names, account numbers, amounts, the operator ID) are masked in screenshots and observation dumps. Human-typed values are never recorded.
 - Discovery sends screen content to a model provider, so it only ever runs against synthetic data.
 
 ### Result taxonomy
@@ -167,6 +167,7 @@ runs/                         per-run output, gitignored
 - **Follow the milestone order** in `docs/IMPLEMENTATION_PLAN.md`. Replay is built before discovery on purpose. Do not start a milestone until the previous one meets its acceptance criteria. Tick milestones off in that file as they complete.
 - **One logical commit per milestone** (a few more if a milestone is large). Never commit, push or open a PR without the developer's explicit request.
 - **Evidence is real.** Never fabricate or hand-edit logs, traces or results in `/evidence/`. Discovery evidence must come from a genuine model run.
+- **Paper notes stay in Paper.** Demo-app screens are built from the screen artboards only. The pink "Notes (Paper only)" artboards are design notes: their text must never be rendered by the app or appear in runtime evidence.
 - Keep secrets out of the repo. Configuration comes from `.env` (see `.env.example`).
 
 ## Code and style

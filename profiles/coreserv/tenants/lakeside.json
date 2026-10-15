@@ -10,7 +10,7 @@
   "policy": {
     "origins": ["http://localhost:4070"],
     "paths": ["/", "/cs.do"],
-    "scopes": ["banner", "nav", "workarea"],
+    "scopes": ["banner", "nav", "workarea", "dialog"],
     "actions": ["click", "fill", "select", "extract", "assert"],
     "maxRisk": "irreversible"
   }

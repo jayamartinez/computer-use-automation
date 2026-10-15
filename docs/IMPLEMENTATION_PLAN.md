@@ -60,11 +60,11 @@ Data read by several components: app profile, tenant binding.
 **Done when:** a person can log in and look up 10042 and 10077 by hand; 99999 shows "No members match"; 10200 shows "Access restricted"; the markup has no IDs, labels or test IDs; URLs do not reveal state; `demo-app/` imports nothing from `src/`.
 
 ### M3. Demo app, write path and faults — `feat(app): sub-account flow, supervisor override, fault injection`
-- [ ] Sub-Account Form, Review, Confirmation; insufficient-funds rule; supervisor override above $2,500; System Notice, Session Expired, Application Error; fault endpoint including `commitThen500`.
+- [x] Sub-Account Form, Review, Confirmation; insufficient-funds rule; supervisor override above $2,500; System Notice, Session Expired, Application Error; fault endpoint including `commitThen500` and `dialog`.
 
-**Partly done.** System Notice, Session Expired and Application Error are built from the approved mockups (artboards 7 to 9), along with the `notice`, `expireSession`, `error500` and `latencyMs` faults. Still to do: the sub-account screens, the insufficient-funds rule, Supervisor Override, `commitThen500`, and a screen with a native dialog for M5. Each new screen needs a mockup approved first.
+**Done (2026-10-05).** The interruption screens and their faults came first (3554a52). The rest is built from the mockups approved on 2026-10-05 (artboards 10 to 16) in one commit rather than the three proposed: the override is a branch inside Continue and both new faults hook into the same request handler, so the split commits would have recorded states that never existed. The supervisor code comes from `CORESERV_SUPERVISOR_CODE`.
 
-**Done when:** every screen and branch in `docs/DESIGN.md` §1–2 is reachable by hand, and each fault can be switched on and observed.
+**Done when:** every screen and branch in `docs/DESIGN.md` §1–2 is reachable by hand, each fault can be switched on and observed, and no text from the Paper notes artboards appears in any rendered page.
 
 ### M4. Schemas — `feat(schema): artifact, profile, tenant binding and result contract`
 - [x] Zod schemas and derived types; artifact load/save with content hash; templating; the CoreServ profile and `lakeside` binding as data; a **hand-written** `lookup_balance` artifact in `tests/fixtures/`.
@@ -72,9 +72,11 @@ Data read by several components: app profile, tenant binding.
 **Done when:** the fixture and profile validate; invalid artifacts are rejected with useful messages (unknown target reference, undeclared input in a template, irreversible step with retries, output with no source step); schema tests pass.
 
 ### M5. Surface — `feat(surface): Surface interface, PlaywrightSurface, FakeSurface`
-- [ ] Observation across frames; `resolve` for `role_name`, `anchor`, `table_cell`; `act`; `matches`; masked screenshots; native dialog reporting; `FakeSurface`.
+- [x] Observation across frames; `resolve` for `role_name`, `anchor`, `table_cell`; `act`; `matches`; masked screenshots; native dialog reporting; `FakeSurface`.
 
-**Partly done (acd90eb).** Everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come with M3.
+**Done (2026-10-05).** acd90eb, then native dialogs (D17) after M9. An open dialog blocks every frame (evaluation and screenshots hang until it is answered), so the surface races its frame reads against a dialog opening and reports only the dialog while one is open. Evidence for a failure under a dialog has the observation dump but no screenshot (`evidence.screenshot` is optional for this reason). `tests/integration/dialog.test.ts` covers the surface, the known alert on both capabilities and an unknown dialog.
+
+**Before:** everything except native dialog reporting. The 300 ms latency criterion is now covered by the M8 replay test under the `latencyMs` fault. Dialogs are required by PDF §3.3 ("an unexpected dialog"): with no listener, Playwright silently dismisses them. They need a demo-app screen with a dialog, so they come after M3 and M9 (D17): `feat(surface): native dialogs as a dialog scope`, then `feat(replay): known dialogs as profile conditions`. Dialog handling is done when the `dialog` fault on the profile is recovered by `password_expiry_alert` during a real-app replay, and an unknown dialog fails as `unexpected_state` without being accepted.
 
 **Done when:** integration tests against the demo app resolve every target in the lookup fixture uniquely, report `ambiguous` and `none` correctly, and resolve the same targets with 300 ms of injected latency.
 
@@ -106,14 +108,22 @@ Data read by several components: app profile, tenant binding.
 - With a target's label changed in a test copy, the run returns `target_unresolved`, or succeeds with `locator_fallback` when a second strategy exists.
 
 ### M9. Replay, write path — `feat(replay): open_subaccount, risk gate, unknown outcome`
-- [ ] Hand-written `open_subaccount` fixture; `select` and `assert` actions; irreversible gate; `outcome_unknown`.
+- [x] Hand-written `open_subaccount` fixture; `select` and `assert` actions; irreversible gate; `outcome_unknown`.
 
-**Done when:** the flow opens a sub-account for 10077 and returns both outputs; an over-balance deposit returns `INSUFFICIENT_FUNDS`; without approval the run stops at Confirm with an approval request (or `policy_denied` when run non-interactively); with `commitThen500` the Confirm click is not repeated and the result is `outcome_unknown` with `sideEffects: "possible"`.
+**Done (2026-10-05).** Every criterion below passes against the real app (`tests/integration/write-path.test.ts`). The `commitThen500` test also reads the member's Savings afterwards with `lookup_balance`, proving the app committed although the run could not see it. Session expiry on Confirm is `outcome_unknown` without a restart.
+
+Two commits: `feat(schema): select and assert steps, typed comparison, pre-commit rule` and `feat(replay): open_subaccount, risk gate, unknown outcome`.
+
+**Done when:** the flow opens a sub-account for 10077 and returns both outputs; an over-balance deposit returns `INSUFFICIENT_FUNDS`; without approval the run stops at Confirm with `policy_denied` when run non-interactively (the approval request arrives with M10's channel); with `commitThen500` the Confirm click is not repeated and the result is `outcome_unknown` with `sideEffects: "possible"`; a Review that does not match the inputs stops before Confirm.
 
 ### M10. Handoff — `feat(handoff): control state machine, intervention channel, human capture`
-- [ ] State machine and epoch; `InterventionChannel` with the file-and-terminal implementation; headed-browser takeover; human action capture; resync; unknown-outcome verdicts.
+- [x] State machine and epoch; `InterventionChannel` with the file-and-terminal implementation; headed-browser takeover; human action capture; resync; unknown-outcome verdicts.
 
-**Done when:** a $3,000 deposit for 10077 pauses at Supervisor Override with a request containing capability, step, reason and a masked screenshot; a person enters the code in the same window and returns control; the run resumes and completes; the captured human actions are in the run log with no typed values; unit tests cover every transition, timeout, abort and a stale-epoch action using a scripted human.
+**Done (2026-10-05), except the run with a real person.** Unit tests (`tests/unit/handoff.test.ts`) cover every transition, timeouts, aborts, approval and epoch fencing with a scripted person on `FakeSurface`. Real-app tests (`tests/integration/handoff.test.ts`) run the full criteria with a scripted person acting on the same live session outside the executor: override authorized and resumed, Cancel then return, abort, claim timeout, approval approve and deny, and the three unknown-outcome verdicts. Not yet exercised: `TerminalChannel` and the headed window with a real person at the keyboard; that is the E7 evidence run (`pnpm replay … --operator`).
+
+Two commits: `feat(handoff): control state machine and intervention channel` and `feat(handoff): headed takeover, human action capture, resync`.
+
+**Done when:** a $3,000 deposit for 10077 pauses at Supervisor Override with a request containing capability, step, reason and a masked screenshot; a person enters the code in the same window and returns control; the run resumes and completes; the captured human actions are in the run log with no typed values; unit tests cover every transition, timeout, abort and a stale-epoch action using a scripted human; approval and unknown-outcome verdicts (D19) produce the results in `docs/DESIGN.md` §10. Automated tests stand in for the person by acting on the same page outside the executor; the E7 evidence run needs a real person.
 
 ### M11. Discovery — `feat(discovery): capability request, LLM loop, typed trace`
 - [ ] Request schema; observation rendering for the model; action vocabulary with value references; `OpenRouterProvider`; `RecordedProvider`; stuck detection; trace writer.
@@ -201,15 +211,20 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
    - After a handler click, replay waits up to `slowLoadMs` for the condition to clear before waiting for the step's state again. Otherwise the old notice, still on screen while the next page loads, is matched again. A condition that is still there is counted as a repeat. The real-app notice test found this; the fake surface changes state instantly.
    - **Faults are armed on a screen and fire once** (`{"notice": "search"}`), instead of the planned time-based `sessionTtl`. Every scenario then reproduces exactly.
    - A step's `retry` budget applies only to failures from the step itself (unresolved, ambiguous, unexpected state, extraction). A disposition's decision is final.
+11. **Write-path design approved (2026-10-05)**, recorded as D16 (update) to D21: dialogs as a `dialog` scope; `assert` before every irreversible step; marking dispatch before acting; no tenant `irreversible` field; the "committed" verdict as a failure with `outputsVerified: false`; no re-run of an escalated step; member numbers and the operator ID masked; Paper notes kept out of the app. Work continues on `feat/write-path-handoff`, branched from the M8 head, in this order: M3, masking, M9, dialog handling, M10.
+12. **M10 choices:**
+   - **Timeout and abort go straight to `FAILED`**, not through `RESYNC` as the diagram in `docs/DESIGN.md` §10 draws it: the run ends without reading the screen again, so there is nothing to resynchronise.
+   - **A missing control explained by an escalation** (the condition was already on screen before the step acted) runs the step after control returns. Only the step whose own action led to the escalation is never re-run (D20).
+   - **Human capture** is an init script in every frame plus a page binding, installed at launch. It reports only while a takeover is active, so automation's own clicks are never attributed to the person. It reports clicks and changes; a person's form submit shows up as the click on its button.
+   - **`runReplay` accepts `onSurface`**, which hands the live session to an operator surface; tests use it to act as the person. A channel opens the browser headed unless the caller says otherwise.
+   - **Default handoff timeouts:** 10 minutes to claim or approve, 30 minutes in control.
 
 ## Known issues
 
-- Member numbers stay visible in saved evidence (D16). Logs show them as `***77`.
 - The scrub backstop replaces digit-only inputs anywhere in a log string, so it could alter a hash or run id that happens to contain one. Low probability; primary redaction does not depend on it.
 - The run-log scrub backstop ignores values shorter than four characters, to avoid mangling ordinary text. Primary redaction does not depend on it.
 - `profile.risk`, `profile.versionProbe` and the `version_mismatch` warning are validated data with no behaviour yet (M11, M8 drift signals).
-- Restarting after session expiry checks whether an irreversible step was dispatched, but no artifact can dispatch one until M9. That branch is untested until then.
-- An expected state that already holds before the action, on the old screen, would be matched at once. The fixture's expected states are all absent before their action. M9's artifact must keep that property, or the race needs a "screen changed" guard.
+- An expected state that already holds before the action, on the old screen, would be matched at once. Both fixtures' expected states are absent before their action (the write path's Review is recognised by its Confirm button, which no earlier screen has). A compiled artifact must keep that property, or the race needs a "screen changed" guard.
 - Each observation makes about a dozen round trips per frame (scope). Fine locally (a full replay takes about one second); revisit if the latency fault makes polling slow.
 
 ## Spike findings
@@ -230,3 +245,10 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 | 2026-10-05 | M8 | ae8065d, 466d2e7, 3554a52 | Outcomes, recoveries, failure evidence; real-app scenarios after the three interruption screens |
 | 2026-10-05 | M3 (partial) | 3554a52 | System Notice, Session Expired, Application Error; notice, expireSession, error500 and latencyMs faults |
 | 2026-10-05 | — | 6adc113, 9a24d74, f4f95e0 | `frame` renamed to `scope` (D15); path allowlist; names and balances masked in evidence (D16) |
+| 2026-10-05 | — | d98f498 | Write-path, dialog and handoff design approved (D16 update, D17–D21); branch `feat/write-path-handoff` |
+| 2026-10-05 | M3 | 9c62ca4 | Sub-account flow, supervisor override, `commitThen500` and `dialog` faults |
+| 2026-10-05 | — | 46ac5c4 | Member numbers, amounts and the operator id masked in evidence (D16 update) |
+| 2026-10-05 | M9 | 4c3572e, dac0b87 | `select`/`assert`, money comparison, pre-commit rule; irreversible gate, dispatch-before-act, `outcome_unknown` |
+| 2026-10-05 | M5 | 63c3b42, a59e07f | Native dialogs as the `dialog` scope; known alert as a profile condition |
+| 2026-10-05 | M10 | f95d571 and the commit after it | State machine, intervention channel, human capture, resync, verdicts; real-person run outstanding (E7) |
+| 2026-10-15 | — | (this commit) | Human-action capture was silently dead under `tsx` (esbuild `keepNames` injects `__name` into the in-page script; vitest does not). Fixed by sending the script as wrapped source. Found during E7: operator mode exercised end to end with OS-level mouse and keyboard input (not Playwright); takeover, resync, approval and captured actions all verified. A run by the developer is still preferable for the committed evidence. |

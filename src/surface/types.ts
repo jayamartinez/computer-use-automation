@@ -30,16 +30,16 @@ export type SurfaceAction =
 export type Signature =
   | { textPresent: string; scope?: string[] }
   | { resolvable: Target }
-  | { textEquals: { target: Target; value: string } }
+  | { textEquals: { target: Target; value: string; as?: "money" } }
   | { valueEquals: { target: Target; value: string } }
   | { all: Signature[] }
   | { any: Signature[] };
 
-// The values beneath this visible label (a column header) or beside it (a form label) are
-// sensitive.
+// The values beneath this visible label (a column header), beside it (a form label) or in the
+// same text element (`self`, as in "Operator: teller01") are sensitive.
 export type MaskRule = {
   label: string;
-  where: "below" | "right_of";
+  where: "below" | "right_of" | "self";
   /** Applies only while this holds, so a label can be masked on the screen it was meant for. */
   when?: Signature;
 };
@@ -56,5 +56,27 @@ export interface Surface {
    * state race has a single, ordered answer for one moment of the screen.
    */
   firstMatch(signatures: Signature[]): Promise<number | undefined>;
-  screenshot(opts: { mask: MaskRule[] }): Promise<Buffer>;
+  /** A masked image of the screen, or undefined while a native dialog blocks capturing it. */
+  screenshot(opts: { mask: MaskRule[] }): Promise<Buffer | undefined>;
+  /**
+   * Reports what a person does on the surface until the returned function is called. Only the
+   * control is reported, never a value typed into it.
+   */
+  watchHuman(listener: (action: HumanAction) => void): Promise<() => Promise<void>>;
 }
+
+/**
+ * One thing a person did during a takeover: which control, by role, name and scope. A dialog
+ * opening is reported too, with its message for the operator; the message is never logged.
+ */
+export type HumanAction =
+  | { kind: "click" | "change" | "submit"; role: string; name: string; scope: string[] }
+  | { kind: "dialog"; role: "dialog"; name: string; scope: string[]; message: string };
+
+/**
+ * The container a native dialog (alert, confirm, prompt) is reported in. While one is open the
+ * surface reports only the dialog: its message as text and its buttons ("OK", and "Cancel" when
+ * it has one). Clicking "OK" accepts it and "Cancel" dismisses it. A surface never answers one by
+ * itself.
+ */
+export const DIALOG_SCOPE = "dialog";

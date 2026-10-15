@@ -31,12 +31,18 @@ A fake legacy core-banking back-office app for one tenant, "Lakeside CU" (`lakes
 | 10200 | Employee account. Opening the profile returns "Access restricted" |
 | 99999 | Does not exist |
 
-Operator `teller01`. Its password and the supervisor override code come from the environment and are never written to disk by the automation.
+Operator `teller01`. Its password and the supervisor override code come from the environment and are never written to disk by the automation. The automation never reads the override code at all: only the demo app and the human operator know it.
+
+The approved mockups are artboards 1–16 on the "CoreServ screens" page of the Paper file. The pink notes under them ("Notes (Paper only)" artboards) are design notes: the app never renders them, so they can never reach runtime evidence.
 
 **Rules:**
-- Account types offered: Club Savings, Money Market, Certificate.
-- Opening deposit is drawn from the member's Savings. A deposit above the Savings balance is rejected with "Opening deposit exceeds available balance". This check runs first.
-- A deposit above $2,500.00 shows Supervisor Override Required before Review.
+- The Member Profile has an "Open Sub-Account" button that opens the Sub-Account Form for that member.
+- Account types offered: Club Savings, Money Market, Certificate. Nickname is 1–20 letters, digits or spaces. Opening deposit is a plain decimal (`500` or `500.00`).
+- A missing or malformed field shows the form again with "Complete all required fields." (a validation error, not reachable with valid inputs).
+- Opening deposit is drawn from the member's Savings. A deposit above the Savings balance shows the form again with "Opening deposit exceeds available balance". This check runs first.
+- A deposit above $2,500.00 shows Supervisor Override Required before Review. Authorize with any Supervisor ID and the correct override code continues to Review, which then shows "Supervisor Override: Approved (<ID>)"; a wrong code shows the override screen again with "Override code not accepted."; Cancel returns to the form.
+- Review shows the pending transaction. Confirm opens the account (`4000-<member>-<nn>`, the next free suffix), moves the deposit out of Savings and shows the Confirmation with a reference `OSA-dddd-dddd`. Back returns to the form with its values; Cancel returns to the profile.
+- Confirm has no idempotency key: submitting the same Review twice opens two accounts. That is why replay never repeats it.
 
 **Fault settings (server-side, set through the admin endpoint):**
 
@@ -46,9 +52,10 @@ Operator `teller01`. Its password and the supervisor override code come from the
 | `expireSession` | Armed on a workarea screen: the next request for it ends the session and shows Session Expired. Every later request shows it until the operator uses "Sign in again", which opens the sign-in page in the whole window |
 | `latencyMs` | Adds delay to every response |
 | `error500` | Armed on a workarea screen: the next request for it returns the Application Error page (HTTP 500) |
-| `commitThen500` | Confirm commits the sub-account, then returns the Application Error page |
+| `dialog` | Armed on a workarea screen: the next response for it raises a native `alert()` ("Your CoreServ password expires in 3 days…") when the page loads |
+| `commitThen500` | `true` arms it once: the next Confirm commits the sub-account, then returns the Application Error page (HTTP 500), identical to `error500` |
 
-Screen faults fire once, on the screen they are armed for (`main_menu`, `inquiry`, `search`, `profile`), so every scenario reproduces exactly. Example: `POST /__admin/faults {"notice": "search"}`; `null` disarms. A clock-based session TTL was rejected because the re-login pass would expire again at a different step on each run.
+Screen faults fire once, on the screen they are armed for (`main_menu`, `inquiry`, `search`, `profile`, `subaccount`, `continue`, `confirm`), so every scenario reproduces exactly. Example: `POST /__admin/faults {"notice": "search"}`; `null` disarms. A clock-based session TTL was rejected because the re-login pass would expire again at a different step on each run.
 
 ## 2. Workflows
 
@@ -67,22 +74,26 @@ Both start on the authenticated shell. Login is performed by the app profile.
 
 ### `coreserv.member.open_subaccount`
 
-| # | State before | Action | Expected after | Branches |
-|---|---|---|---|---|
-| 1–4 | | Same as lookup | Member Profile | Same two outcomes |
-| 5 | Member Profile | Click "Open Sub-Account" | Sub-account form | |
-| 6 | Form | Select Account Type `{{inputs.accountType}}` | Reads back | |
-| 7 | Form | Fill Nickname `{{inputs.nickname}}` | Reads back | |
-| 8 | Form | Fill Opening Deposit `{{inputs.openingDeposit}}` | Reads back | |
-| 9 | Form | Click "Continue" | Review | `INSUFFICIENT_FUNDS`; Supervisor Override (escalate) |
-| 10 | Review | Assert the displayed member, type and deposit equal the inputs | | Mismatch is a hard failure |
-| 11 | Review | Click "Confirm" (irreversible, gated, never retried) | Confirmation | Timeout or error gives `outcome_unknown` |
-| 12 | Confirmation | Extract new account number and reference | Both parse | |
-| ✓ | Confirmation | Checkpoint: "Sub-account opened" text; reference present; Member No equals the input | | |
+Inputs: `memberId` (5 digits, `identifier`), `accountType` (enum of the three types, `none`), `nickname` (`^[A-Za-z0-9 ]{1,20}$`, `none`), `openingDeposit` (money, `financial`). Outputs: `newAccountNumber` (`^4000-\d{5}-\d{2}$`, `account_number`) and `confirmationRef` (`^OSA-\d{4}-\d{4}$`, `none`).
+
+| # | Step id | Action | Risk | Expected after | Branches |
+|---|---|---|---|---|---|
+| 1–4 | as lookup | Same as lookup; step 4 expects the Open Sub-Account button | read / reversible | Member Profile | `MEMBER_NOT_FOUND`, `PERMISSION_DENIED` |
+| 5 | `open_form` | Click "Open Sub-Account" | read | Account Type select resolvable | |
+| 6 | `select_type` | Select Account Type `{{inputs.accountType}}` | reversible | Reads back | |
+| 7 | `fill_nickname` | Fill Nickname `{{inputs.nickname}}` | reversible | Reads back | |
+| 8 | `fill_deposit` | Fill Opening Deposit `{{inputs.openingDeposit}}` | reversible | Reads back | |
+| 9 | `continue_to_review` | Click "Continue" (posts nothing) | reversible | Confirm button resolvable | `INSUFFICIENT_FUNDS`; Supervisor Override (escalate) |
+| 10 | `assert_review` | Assert Member No, Account Type, Nickname and Opening Deposit (as money) equal the inputs | read | | A mismatch is `unexpected_state` |
+| 11 | `confirm` | Click "Confirm" (irreversible, gated, never retried) | irreversible | "Sub-account opened" | Anything else is `outcome_unknown` |
+| 12–13 | `read_account`, `read_reference` | Extract New Account No and Confirmation Ref | read | Both match their patterns | |
+| ✓ | | Checkpoint: "Sub-account opened"; Member No equals the input; both outputs parsed | | | |
+
+Recoverable on this flow: System Notice anywhere; session expiry before step 11 (sign in again, restart); the known password-expiry alert. Escalations: Supervisor Override (step 9), the approval before step 11, an unknown outcome after it.
 
 Two rules worth keeping:
 - **Identity read-back.** Both checkpoints confirm the screen shows the member that was asked for.
-- **Pre-commit assertion.** Step 10 makes the irreversible click conditional on the screen showing what will be committed.
+- **Pre-commit assertion.** Step 10 makes the irreversible click conditional on the screen showing what will be committed. The schema requires an `assert` step immediately before every irreversible step, and replay runs it again if control changed hands since it last passed.
 
 ## 3. Surface interface
 
@@ -94,12 +105,14 @@ interface Surface {
   matches(signature: Signature): Promise<boolean>;
   firstMatch(signatures: Signature[]): Promise<number | undefined>; // ordered, one observation
   screenshot(opts: { mask: MaskRule[] }): Promise<Buffer>;
+  watchHuman(listener: (action: HumanAction) => void): Promise<() => Promise<void>>;
 }
 ```
 
 - The recorded flow speaks only in targets, actions and signatures. How a surface perceives and acts is entirely behind this interface.
 - **Scope.** Each target and signature names a scope: an ordered path of named containers, matched exactly. The surface defines the names: on `PlaywrightSurface` it is the path of frame names below the top document (`["workarea"]`); on a single-document page it is `[]`; a desktop surface would use window then pane. A surface must give each container a stable name. `PlaywrightSurface` uses the frame's `name`, so an unnamed iframe is a known gap.
-- A native dialog (alert/confirm) is reported in the observation as a state. It is never auto-accepted; an unknown one is an `unexpected_state`.
+- **Native dialogs are a container named `dialog`.** While an `alert`/`confirm`/`prompt` is open, the observation holds only the dialog, as an operator sees it: its message as text and its buttons (`OK`, plus `Cancel` for confirm and prompt) as buttons, all in scope `["dialog"]`. Clicking `OK` accepts it and `Cancel` dismisses it. Existing targets, signatures and profile handlers therefore work unchanged, and a desktop modal window would map the same way. A surface never answers a dialog by itself; one that matches no profile condition is an `unexpected_state`.
+- **Handoff seam.** `watchHuman(listener)` starts reporting what a person does on the surface (role, name and scope of the control; never a typed value) and returns a function that stops it. A surface whose session has gone (window closed) throws `SurfaceClosedError`.
 - `PlaywrightSurface` builds observations from per-frame accessibility snapshots plus bounding boxes, and resolves `anchor` and `table_cell` geometrically.
 - `FakeSurface` is an in-memory state machine used to test the interpreter, executor and handoff without a browser.
 
@@ -207,11 +220,11 @@ Trimmed example:
 - **Locator kinds.** `role_name` (accessible role and name), `anchor` (a control of a given role in a geometric relation to visible text: `right_of`, `below`, `same_row`), `table_cell` (table found by header set, row by key column, cell by column).
 - **Resolution.** Strategies are tried in order. A strategy matching zero or several elements is skipped. No unique match from any strategy is `target_unresolved` or `target_ambiguous`. Success on any strategy but the first adds a `locator_fallback` warning.
 - **Values.** Only `{{inputs.x}}` templates or reviewed constants. No secret ever appears.
-- **Actions.** `click`, `fill`, `select`, `extract`, `assert`.
-- **Risk.** `read`, `reversible`, `irreversible`. An irreversible step has `retry.max: 0` and `onTimeout: "outcome_unknown"`.
+- **Actions.** `click`, `fill`, `select`, `extract`, `assert`. An `assert` step has no target: it holds a `check` signature that must hold on the current screen, and acts on nothing.
+- **Risk.** `read`, `reversible`, `irreversible`. An irreversible step has `retry.max: 0` and `onTimeout: "outcome_unknown"`, and must come immediately after an `assert` step (the pre-commit read-back).
 - **Expect.** `valueEquals` for fills and selects; `resolvable` (the next target can be uniquely resolved) for clicks. Checkpoints add identity read-back and parsed outputs.
-- **Signatures.** Content predicates within a scope (`textPresent`, `resolvable`, `cellEquals`), combined with `all` / `any`. Never URL-based.
-- **Types.** `string`, `integer`, `money` (decimal string, currency), `date`, `enum`. Sensitivities: `none`, `identifier`, `financial`, `account_number`, `pii`.
+- **Signatures.** Content predicates within a scope (`textPresent`, `resolvable`, `cellEquals`), combined with `all` / `any`. Never URL-based. `cellEquals` takes `as: "money"` to compare amounts rather than text, so the input `500.00` equals the screen's `$500.00` without a formatting language in templates.
+- **Types.** `string`, `integer`, `money` (decimal string, currency), `date`, `enum`. Sensitivities: `none`, `identifier`, `financial`, `account_number`, `pii`. An output may declare a `pattern` its extracted text must match.
 - **`open_subaccount` differences.** `requires.maxRisk` is `irreversible`; outputs `newAccountNumber` (`account_number`, logged masked) and `confirmationRef`.
 
 ## 5. Replay
@@ -238,6 +251,17 @@ Per step:
 | `app_error` | fail | `failure: app_error` |
 | Nothing matched | fail | `failure: unexpected_state` |
 | Irreversible step dispatched, result undetermined | escalate | `unknown_outcome` request |
+| `password_expiry_alert` (native dialog) | recover | click OK in scope `dialog`, re-wait for `expect` |
+| Any other native dialog | fail | nothing matches, so `failure: unexpected_state`; never accepted blindly |
+
+### Irreversible steps
+
+- **Gate.** The step runs unattended only when the artifact is `approved` and the caller passed `--allow-irreversible`. Otherwise, with an operator channel, an `approval` request is raised (approve or deny); without one, the executor denies it: `failure: policy_denied`.
+- **Pre-commit read-back.** The `assert` step before it must have passed in the current control epoch. Any transfer of control (an approval wait included) makes replay run it again first.
+- **Dispatched means attempted.** A `dispatch_irreversible` event is logged and the step is marked dispatched *before* the surface is told to act. An error thrown while acting counts as dispatched.
+- **No blind retry.** After dispatch nothing repeats the click and nothing restarts the run. Only the step's expected state and outcomes the artifact lists for that step are trusted; any condition (`fail`, `recover` with restart, `escalate`), a timeout or an unknown screen becomes `outcome_unknown`: `sideEffects: "possible"`, `safeToRetry: false`. A `recover` condition with `resume: "continue"` (such as a notice) is still handled, since it repeats nothing.
+- **Unknown outcome.** With a channel, an `unknown_outcome` request lets a person look at the live session (§10). Without one, the result is `failure: outcome_unknown`. `commitThen500` is the reproducible case: the app commits and then shows the same page as `error500`.
+- **Evidence.** The dispatch event, the state that matched after it, a masked screenshot (the error page's Reference stays readable for reconciliation), the masked element dump and any intervention files.
 
 Recoveries are bounded (default two attempts per condition per run); exceeding the bound is `recovery_exhausted`. A step's `retry` budget covers only failures from the step itself; a disposition's decision is final.
 
@@ -257,6 +281,7 @@ type ReplayResult = Common & (
         expected: string; observed: string;        // observed is masked
         sideEffects: "none" | "possible" | "committed";
         safeToRetry: boolean;
+        outputsVerified: false;                    // a failure never carries checked outputs
         evidence: { screenshot: string; observation: string };
       } }
 );
@@ -338,7 +363,7 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
 // profiles/coreserv/profile.json
 {
   "product": "coreserv", "versions": "7.x", "surface": "web",
-  "scopes": ["banner", "nav", "workarea"],
+  "scopes": ["banner", "nav", "workarea", "dialog"],
   "versionProbe": { "scope": ["banner"], "pattern": "CoreServ (\\d+\\.\\d+)" },
   "login": { "steps": [ /* fill operator id, fill {{secrets.password}}, click Sign In */ ],
              "authenticated": { "scope": ["nav"], "textPresent": "Member Inquiry" } },
@@ -348,7 +373,9 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
     { "id": "session_expired",     "disposition": "recover",  "signature": { "textPresent": "Your session has expired" },
       "handler": { "click": { "role": "link", "name": "Sign in again" } }, "resume": "restart_if_no_side_effects", "maxAttempts": 1 },
     { "id": "app_error",           "disposition": "fail",     "signature": { "textPresent": "Application Error" } },
-    { "id": "supervisor_override", "disposition": "escalate", "signature": { "textPresent": "Supervisor Override Required" } }
+    { "id": "supervisor_override", "disposition": "escalate", "signature": { "textPresent": "Supervisor Override Required" } },
+    { "id": "password_expiry_alert", "disposition": "recover", "signature": { "scope": ["dialog"], "textPresent": "password expires" },
+      "handler": { "click": { "scope": ["dialog"], "role": "button", "name": "OK" } }, "resume": "continue", "maxAttempts": 2 }
   ],
   "timeouts": { "slowLoadMs": 3000 },
   "risk": { "safeControls": ["Search", "View", "Continue", "Acknowledge", "Member Inquiry", "Open Sub-Account"],
@@ -358,7 +385,13 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
     { "label": "Account No", "where": "below" }, { "label": "SSN", "where": "right_of" },
     { "label": "Balance", "where": "below" },
     { "label": "Name", "where": "below",    "when": { "scope": ["workarea"], "textPresent": "Member Inquiry Results" } },
-    { "label": "Name", "where": "right_of", "when": { "scope": ["workarea"], "textPresent": "Member Profile" } } ]
+    { "label": "Name", "where": "right_of", "when": { "scope": ["workarea"], "textPresent": "Member Profile" } },
+    { "label": "Member No", "where": "below", "when": { "scope": ["workarea"], "textPresent": "Member Inquiry Results" } },
+    { "label": "Member No", "where": "right_of", "when": { "scope": ["workarea"], "textPresent": "Member Profile" } },
+    { "label": "Member Number", "where": "right_of" },
+    { "label": "Opening Deposit", "where": "right_of" }, { "label": "New Account No", "where": "right_of" },
+    { "label": "Operator:", "where": "self" }
+    /* …one Member No / Name rule per write-path screen; the profile file is the full list */ ]
 }
 
 // profiles/coreserv/tenants/lakeside.json
@@ -367,10 +400,15 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
   "baseUrl": "http://localhost:4070",
   "credentials": { "operatorId": "env:CORESERV_OPERATOR_ID", "password": "env:CORESERV_OPERATOR_PASSWORD" },
   "policy": { "origins": ["http://localhost:4070"], "paths": ["/", "/cs.do"],
+              "scopes": ["banner", "nav", "workarea", "dialog"],
               "actions": ["click", "fill", "select", "extract", "assert"],
-              "maxRisk": "irreversible", "irreversible": "require_approval" }
+              "maxRisk": "irreversible" }
 }
 ```
+
+There is no tenant `irreversible` setting. A tenant that must never write sets `maxRisk` below `irreversible`; otherwise the irreversible gate in §5 applies to every tenant the same way.
+
+**Masks.** A rule names a visible label and where its value sits: `below` (a column under a header), `right_of` (a value beside a form label) or `self` (the label and value share one text element, such as the banner's "Operator: teller01"; the whole element is hidden). `when` limits a rule to one screen. Member numbers, names, account numbers, balances, deposits, the available balance, the override amount, the Supervisor ID and the operator ID are all masked in saved screenshots and observation dumps. Evidence is told apart by scenario folder and run id, and logs show identifiers as `***77`.
 
 Tenant overrides (secondary) patch named targets, condition signatures and timeouts only.
 
@@ -401,15 +439,21 @@ AUTOMATION_ACTIVE ──trigger──► PAUSING ──settled──► AWAITING
                                                      FAILED
 ```
 
-- **Ownership.** `controller: automation | human | none` and an epoch incremented on every transfer.
+- **Ownership.** `controller: automation | human | none` and an epoch incremented on every transfer. The guarded executor refuses any action planned under an older epoch.
 - **Triggers.** A condition with disposition `escalate`; an irreversible step needing approval; unknown outcome; discovery stuck.
-- **Intervention request.** `{ id, runId, kind: "approval" | "takeover" | "unknown_outcome", capability or goal, stepId, intent, reason, screenshot (masked), allowedResponses, epoch, createdAt }`, sent through an `InterventionChannel` interface. The implementation writes `runs/<runId>/interventions/<n>.json` and prompts in the terminal.
-- **Manual control.** The human uses the same headed browser window. Injected listeners record clicks, changes and navigations with the element's role and name. Typed values are never recorded. The network allowlist still applies; action policy does not (a stated limit).
-- **Resync on return.** Re-observe, then in order: the current step's `expect` holds → advance; the step's target is resolvable and it is not an already-dispatched irreversible step → run it; an outcome matches → return it; otherwise `unexpected_state`.
-- **Unknown outcome.** Automation never repeats the click. The human gives a verdict:
-  - *Committed*: they navigate to the confirmation screen; automation verifies the checkpoint and extracts outputs.
-  - *Not committed*: `failure` with `sideEffects: "none"`, `safeToRetry: true`.
+- **Pausing.** Control passes to `none`; automation waits until two observations in a row have the same fingerprint (at most `slowLoadMs`), then captures a masked screenshot.
+- **Intervention request.** `{ id, runId, kind: "approval" | "takeover" | "unknown_outcome", capability, stepId, intent, condition, reason, inputs (redacted by sensitivity), screenshot (masked), allowedResponses, epoch, createdAt }`, written to `runs/<runId>/interventions/<n>.json` and sent through an `InterventionChannel`. The channel asks one question at a time from a fixed list of answers; `TerminalChannel` prompts on stdin, and tests use a scripted channel.
+- **Approval.** Answers `approve` / `deny`. Control never passes to the human: it goes `none` and back to `automation`, so the pre-commit `assert` runs again before Confirm. `deny` is `failure: aborted_by_human`.
+- **Takeover.** Answers `claim` / `abort` within `claimTimeoutMs` (no answer: `escalation_timeout`). On `claim`, control passes to `human` and human capture starts. The person works in the same headed window, then answers `return` / `abort`.
+- **Human capture.** An injected listener records each click, change and submit with the control's role, name and scope, the epoch and the time, into `run.jsonl` (`human_action`) and `interventions/<n>.actions.json`. Typed values are never recorded. A click on a profile commit control marks an irreversible action as dispatched, so side effects become `possible`. The network allowlist still applies; action policy does not (a stated limit).
+- **Resync on return.** Control passes back to `automation`, then one fresh observation is matched, in order, against: profile conditions (a `recover` one is handled and matching repeats), the step's outcomes, the step's `expect` (advance to the next step). Anything else is `unexpected_state`. **The step that triggered an escalation is never run again**: it would only lead back to the same screen, and the person evidently chose not to finish it. So Cancel on the override screen followed by `return` is `unexpected_state` with `sideEffects: "none"`.
+- **Abort and loss of session.** `abort` is `failure: aborted_by_human`. A session expiry seen at resync is handled like any other (sign in again and restart if nothing was dispatched; the override then escalates again). A closed window is `unexpected_state` ("the session window was closed"). A screen elsewhere in the app is `unexpected_state` with evidence.
+- **Unknown outcome.** Automation never repeats the click. The person claims the session, looks (for example at the member's account list), returns control and gives a verdict:
+  - The step's expected state is on screen at resync (a slow commit finished): automation verifies the checkpoint and extracts outputs as usual. No verdict is needed.
+  - *Committed*: `failure` keeping the category that triggered the request (`app_error` for `commitThen500`), with `sideEffects: "committed"`, `safeToRetry: false` and `outputsVerified: false`. The account exists but its number and reference were not read from a checkpointed screen, so they are not returned.
+  - *Not committed*: the same category, `sideEffects: "none"`, `safeToRetry` as for that category.
   - *Can't tell*: `failure: outcome_unknown`, `sideEffects: "possible"`, `safeToRetry: false`.
+- **Dialogs during a takeover.** A native dialog raised while the person is in control is held by the surface like any other, and the terminal shows its text. After `return`, a known one is handled by its profile condition. This is a limit of the minimal operator surface.
 - **In production** this would be asynchronous, the channel would be a queue or ticket, and the window would be a streamed remote session. Those are design notes for the report, not things to build.
 
 ## 11. Evidence

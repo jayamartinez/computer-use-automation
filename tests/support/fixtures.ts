@@ -8,7 +8,10 @@ import type { Tenant } from "../../src/profile/schema.ts";
 
 export const FIXTURE_PATH = "tests/fixtures/coreserv.member.lookup_balance.json";
 
+export const SUBACCOUNT_PATH = "tests/fixtures/coreserv.member.open_subaccount.json";
+
 export const lookupArtifact = (): Promise<Artifact> => loadArtifact(FIXTURE_PATH);
+export const subaccountArtifact = (): Promise<Artifact> => loadArtifact(SUBACCOUNT_PATH);
 export const coreservProfile = () => loadProfile("profiles/coreserv/profile.json");
 export const lakeside = () => loadTenant("profiles/coreserv/tenants/lakeside.json");
 

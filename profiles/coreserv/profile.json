@@ -2,7 +2,7 @@
   "product": "coreserv",
   "versions": "7.x",
   "surface": "web",
-  "scopes": ["banner", "nav", "workarea"],
+  "scopes": ["banner", "nav", "workarea", "dialog"],
   "versionProbe": {
     "scope": ["banner"],
     "pattern": "CoreServ (\\d+\\.\\d+)"
@@ -123,6 +123,29 @@
         "scope": ["workarea"],
         "textPresent": "Supervisor Override Required"
       }
+    },
+    {
+      "id": "password_expiry_alert",
+      "disposition": "recover",
+      "signature": {
+        "scope": ["dialog"],
+        "textPresent": "password expires"
+      },
+      "handler": {
+        "click": {
+          "scope": ["dialog"],
+          "role": "button",
+          "strategies": [
+            {
+              "kind": "role_name",
+              "name": "OK"
+            }
+          ],
+          "rationale": "An informational alert; OK is its only button and only dismisses the message."
+        }
+      },
+      "resume": "continue",
+      "maxAttempts": 2
     }
   ],
   "timeouts": {
@@ -167,6 +190,90 @@
         "scope": ["workarea"],
         "textPresent": "Member Profile"
       }
+    },
+    {
+      "label": "Name",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Open Sub-Account"
+      }
+    },
+    {
+      "label": "Member Name",
+      "where": "right_of"
+    },
+    {
+      "label": "Member No",
+      "where": "below",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Inquiry Results"
+      }
+    },
+    {
+      "label": "Member No",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Member Profile"
+      }
+    },
+    {
+      "label": "Member No",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Open Sub-Account"
+      }
+    },
+    {
+      "label": "Member No",
+      "where": "right_of",
+      "when": {
+        "scope": ["workarea"],
+        "textPresent": "Sub-Account Confirmation"
+      }
+    },
+    {
+      "label": "Member Number",
+      "where": "right_of"
+    },
+    {
+      "label": "New Account No",
+      "where": "right_of"
+    },
+    {
+      "label": "Opening Deposit",
+      "where": "right_of"
+    },
+    {
+      "label": "Opening Deposit *",
+      "where": "right_of"
+    },
+    {
+      "label": "Available Balance",
+      "where": "right_of"
+    },
+    {
+      "label": "Amount",
+      "where": "right_of"
+    },
+    {
+      "label": "Supervisor ID",
+      "where": "right_of"
+    },
+    {
+      "label": "Supervisor Override",
+      "where": "right_of"
+    },
+    {
+      "label": "Operator:",
+      "where": "self"
+    },
+    {
+      "label": "Welcome,",
+      "where": "self"
     }
   ]
 }
