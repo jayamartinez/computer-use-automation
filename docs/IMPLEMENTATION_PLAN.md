@@ -251,3 +251,4 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 | 2026-10-05 | M9 | 4c3572e, dac0b87 | `select`/`assert`, money comparison, pre-commit rule; irreversible gate, dispatch-before-act, `outcome_unknown` |
 | 2026-10-05 | M5 | 63c3b42, a59e07f | Native dialogs as the `dialog` scope; known alert as a profile condition |
 | 2026-10-05 | M10 | f95d571 and the commit after it | State machine, intervention channel, human capture, resync, verdicts; real-person run outstanding (E7) |
+| 2026-10-15 | — | (this commit) | Human-action capture was silently dead under `tsx` (esbuild `keepNames` injects `__name` into the in-page script; vitest does not). Fixed by sending the script as wrapped source. Found during E7: operator mode exercised end to end with OS-level mouse and keyboard input (not Playwright); takeover, resync, approval and captured actions all verified. A run by the developer is still preferable for the committed evidence. |

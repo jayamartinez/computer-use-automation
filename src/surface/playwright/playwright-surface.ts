@@ -198,7 +198,12 @@ export class PlaywrightSurface implements Surface {
       await context.exposeBinding("__coreservHumanAction", (_source, action: HumanAction) =>
         created.surface?.humanListener?.(action),
       );
-      await context.addInitScript(captureHumanActions);
+      // Sent as source text. tsx compiles with esbuild keepNames, which makes nested functions
+      // call a __name helper the page does not have; the wrapper supplies it, and is harmless
+      // for plain tsc output.
+      await context.addInitScript(
+        `(() => { const __name = (fn) => fn; (${captureHumanActions.toString()})(); })();`,
+      );
       const page = await context.newPage();
       const surface = new PlaywrightSurface(browser, page);
       created.surface = surface;
