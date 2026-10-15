@@ -229,7 +229,12 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 
 ## Spike findings
 
-(Record the result of the pre-M6 model spike here.)
+**2026-10-15, pre-M11, `scripts/model-spike.mts`.** Twelve vision+tool-calling models on OpenRouter were each given one decision on two real CoreServ observations (the project's element list plus a screenshot, the M11 tool vocabulary, goal, inputs and outputs): the empty Member Inquiry form, and the member profile. Expected: `fill` the Member Number field with `{input: "memberId"}`; `extract` the Savings balance cell into `savingsBalance`. Total spend $0.05.
+
+- **23 of 24 decisions were right**, across every price tier (gpt-6-luna, claude-haiku-5.5, gemini-3.5-flash-lite, qwen3.5-flash, deepseek-v4.1-flash, glm-5.3-flash, gpt-5.4-mini, qwen3-vl-30b, grok-4.3, claude-sonnet-5.5, gpt-6-sol). gemini-3.8-flash returned nothing on the profile screen: its 381 hidden reasoning tokens used the whole 400-token budget. M11 must give reasoning models headroom or cap reasoning effort.
+- **Value provenance works as designed**: every model referenced the input by name. gpt-6-luna and gpt-5.4-mini also echoed the literal alongside it, so M11's schema must make `input` and `literal` mutually exclusive rather than rely on the prompt.
+- **Observation gap**: unlabeled inputs appear as `textbox value=""` with no name, because the anchor label is only computed at resolve time. The models still chose correctly from document order and the screenshot, but that is fragile. M11 should surface the resolved label (the same "cell to the left" rule the capture script uses) as the element's name.
+- **Choice**: `anthropic/claude-haiku-5.5` as the default `DISCOVERY_MODEL`: correct on both, clean arguments, about $0.0004 per decision, so a full discovery run costs well under a cent. Any of the cheap tier would do; the expensive models bought nothing here.
 
 ## Progress log
 
