@@ -48,7 +48,7 @@ export type HandoffContext = { stepId: string; intent: string; reason: string; c
 
 export type TakeoverResult =
   /** Control came back. `answer` is "return", or the verdict for an unknown outcome. */
-  | { resolution: "returned"; answer: string; humanCommitted: boolean }
+  | { resolution: "returned"; answer: string; humanCommitted: boolean; actions: HumanAction[] }
   /** Nobody claimed the session in time, or someone said not to continue. */
   | { resolution: "timeout" | "aborted" | "declined" };
 
@@ -87,7 +87,10 @@ export class HandoffController {
 
   constructor(private readonly options: HandoffOptions) {}
 
-  /** Asks a person whether an irreversible step may run. Control never passes to them. */
+  /**
+   * Asks a person whether a step may run: an irreversible one, or during discovery a control
+   * the app profile does not classify. Control never passes to them.
+   */
   async approval(context: HandoffContext): Promise<"approve" | "deny" | "timeout"> {
     const { channel, control, claimTimeoutMs } = this.options;
     const request = await this.raise("approval", context);
@@ -95,7 +98,7 @@ export class HandoffController {
       {
         requestId: request.id,
         prompt:
-          `Approve the irreversible step "${context.intent}" (${context.stepId})? ` +
+          `Approve the step "${context.intent}" (${context.stepId})? ` +
           `${context.reason}. The screen is in the browser window and in the request file.`,
         answers: ANSWERS.approval.first,
       },
@@ -191,7 +194,7 @@ export class HandoffController {
     }
     control.transfer("automation");
     this.to("RESYNC");
-    return { resolution: "returned", answer, humanCommitted };
+    return { resolution: "returned", answer, humanCommitted, actions };
   }
 
   /** Called once automation has matched the screen after a takeover, or failed to. */

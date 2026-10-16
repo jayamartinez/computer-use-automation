@@ -1,0 +1,61 @@
+{
+  "id": "coreserv.member.open_subaccount",
+  "goal": "Open a new sub-account for the member, funded from their Savings with the opening deposit, and read the new account number and the confirmation reference from the confirmation screen.",
+  "description": "Open a sub-account for a member, funded from their Savings, and return the new account number and the confirmation reference.",
+  "tenant": "lakeside",
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "pattern": "^\\d{5}$",
+      "sensitivity": "identifier",
+      "description": "Member number",
+      "value": "10042",
+      "example": "10042"
+    },
+    "accountType": {
+      "type": "enum",
+      "sensitivity": "none",
+      "description": "Kind of sub-account to open",
+      "values": ["Club Savings", "Money Market", "Certificate"],
+      "value": "Club Savings"
+    },
+    "nickname": {
+      "type": "string",
+      "sensitivity": "none",
+      "description": "Name the member gives the sub-account",
+      "pattern": "^[A-Za-z0-9 ]{1,20}$",
+      "value": "Vacation Fund"
+    },
+    "openingDeposit": {
+      "type": "money",
+      "sensitivity": "financial",
+      "description": "Amount moved from Savings into the new sub-account",
+      "currency": "USD",
+      "value": "250.00"
+    }
+  },
+  "outputs": {
+    "newAccountNumber": {
+      "type": "string",
+      "sensitivity": "account_number",
+      "description": "Account number of the new sub-account",
+      "pattern": "^4000-\\d{5}-\\d{2}$"
+    },
+    "confirmationRef": {
+      "type": "string",
+      "sensitivity": "none",
+      "description": "Reference to give the member; also what reconciliation looks up",
+      "pattern": "^OSA-\\d{4}-\\d{4}$"
+    }
+  },
+  "verifyInputs": {
+    "memberId": "10077",
+    "accountType": "Money Market",
+    "nickname": "Rainy Day",
+    "openingDeposit": "400.00"
+  },
+  "probes": [
+    { "code": "MEMBER_NOT_FOUND", "inputs": { "memberId": "99999" } },
+    { "code": "INSUFFICIENT_FUNDS", "inputs": { "memberId": "10042", "openingDeposit": "2490.00" } }
+  ]
+}
