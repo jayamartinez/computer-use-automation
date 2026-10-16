@@ -27,6 +27,17 @@ export class RunLog {
     return new RunLog((line) => appendFileSync(path, `${line}\n`), scrubs);
   }
 
+  /**
+   * Adds a value learned during the run, such as text the screen masks or an output just
+   * read, so free text written afterwards (a model's own words, an error) cannot carry it.
+   */
+  addScrub(scrub: Scrub): void {
+    if (scrub.value.length < MIN_SCRUB_LENGTH) return;
+    if (this.scrubs.some((s) => s.value === scrub.value)) return;
+    this.scrubs.push(scrub);
+    this.scrubs.sort((a, b) => b.value.length - a.value.length);
+  }
+
   write(event: string, fields: Record<string, unknown> = {}): void {
     const entry = { seq: ++this.seq, ts: new Date().toISOString(), event, ...fields };
     this.sink(JSON.stringify(this.scrub(entry)));

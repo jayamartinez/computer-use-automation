@@ -192,7 +192,7 @@ describe("replay: lookup_balance against the fake surface", () => {
     expect(result.failure.observed).toBe(
       "No known state appeared; checked condition system_notice, condition session_expired, " +
         "condition app_error, condition supervisor_override, condition password_expiry_alert, " +
-        "expected state",
+        "expected state; the expected target matches nothing on the screen",
     );
   });
 

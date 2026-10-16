@@ -14,7 +14,7 @@ import type { Profile, Tenant } from "../profile/schema.ts";
 import { PlaywrightSurface } from "../surface/playwright/playwright-surface.ts";
 import type { Surface } from "../surface/types.ts";
 import { replay } from "./interpreter.ts";
-import { outputAsText } from "./values.ts";
+import { outputAsText } from "../outcome/values.ts";
 
 export type RunReplayOptions = {
   artifact: Artifact;

@@ -5,7 +5,13 @@ import type { RunLog } from "../evidence/run-log.ts";
 import type { Policy } from "../profile/schema.ts";
 import { maskObservation } from "../surface/resolve.ts";
 import type { Target } from "../surface/target.ts";
-import type { MaskRule, ObservedElement, Signature, Surface } from "../surface/types.ts";
+import type {
+  MaskRule,
+  Observation,
+  ObservedElement,
+  Signature,
+  Surface,
+} from "../surface/types.ts";
 import type { ControlState } from "./control.ts";
 import { checkAction } from "./policy.ts";
 
@@ -129,6 +135,19 @@ export class GuardedExecutor {
       ms: Date.now() - started,
     });
     return { status: "done", element: resolution.element, strategyIndex: resolution.strategyIndex };
+  }
+
+  /** Observing is not an action and needs no policy decision. */
+  observe(): Promise<Observation> {
+    return this.options.surface.observe();
+  }
+
+  /**
+   * The screen with the given masks. Discovery passes none: the model must see the real
+   * screen, which is why discovery only ever runs against synthetic data.
+   */
+  screenshot(mask: MaskRule[]): Promise<Buffer | undefined> {
+    return this.options.surface.screenshot({ mask });
   }
 
   /**

@@ -117,7 +117,12 @@ describe("handoff controller with a scripted person", () => {
     const startEpoch = t.control.epoch;
 
     const result = await t.handoff.takeover("takeover", context);
-    expect(result).toEqual({ resolution: "returned", answer: "return", humanCommitted: false });
+    expect(result).toMatchObject({
+      resolution: "returned",
+      answer: "return",
+      humanCommitted: false,
+    });
+    expect(result.resolution === "returned" && result.actions.length).toBe(2);
     expect(t.handoff.state).toBe("RESYNC");
     expect(t.control.controller).toBe("automation");
     // none, human, automation: three transfers.
@@ -235,6 +240,7 @@ describe("handoff controller with a scripted person", () => {
       resolution: "returned",
       answer: "committed",
       humanCommitted: false,
+      actions: [],
     });
     const declined = setup(answers("cant_tell"));
     expect(await declined.handoff.takeover("unknown_outcome", context)).toEqual({

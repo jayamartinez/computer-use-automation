@@ -18,8 +18,9 @@ import {
 } from "../outcome/result.ts";
 import type { Condition, Profile, Tenant } from "../profile/schema.ts";
 import type { Target } from "../surface/target.ts";
+import { resolveTarget } from "../surface/resolve.ts";
 import type { Signature } from "../surface/types.ts";
-import { inputProblem, outputAsText, parseOutput } from "./values.ts";
+import { inputProblem, outputAsText, parseOutput } from "../outcome/values.ts";
 
 const CHECKPOINT_TIMEOUT_MS = 2_000;
 const HANDLER_TIMEOUT_MS = 5_000;
@@ -222,6 +223,22 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
           },
         }
       : bind(expect);
+
+  /** Why a `resolvable` signature does not hold: the target is absent or matches several. */
+  const whyNot = async (signature: Signature): Promise<string> => {
+    if (!("resolvable" in signature)) return "";
+    const resolution = resolveTarget((await executor.observe()).elements, signature.resolvable);
+    switch (resolution.kind) {
+      case "unique":
+        return "";
+      case "none":
+        return "; the expected target matches nothing on the screen";
+      case "ambiguous":
+        return `; the expected target matches ${resolution.count} elements, so it is not used`;
+      default:
+        return resolution satisfies never;
+    }
+  };
 
   const noteRecovery = (condition: string, atStep: string): void => {
     const entry = recoveries.find((r) => r.condition === condition && r.atStep === atStep);
@@ -480,7 +497,7 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
           `The expected state ${JSON.stringify(
             step.action === "assert" ? step.check : step.expect,
           )} within ${step.timeoutMs} ms`,
-          `No known state appeared; checked ${candidates.map(label).join(", ")}`,
+          `No known state appeared; checked ${candidates.map(label).join(", ")}${await whyNot(expected(step))}`,
         );
       }
       const matched = candidates[hit.index]!;
@@ -551,6 +568,17 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
       return end;
     }
     let approved = unattended;
+    if (step.risk === "irreversible" && !unattended && !handoff) {
+      // Refused here, in words a caller can act on, rather than by the executor's generic deny.
+      return problem(
+        step,
+        "policy_denied",
+        "An approved artifact run with the irreversible flag, or an operator to approve the step",
+        artifact.status === "approved"
+          ? "The caller did not allow irreversible steps to run unattended and no operator is present"
+          : "The capability is a draft; it needs an operator to approve the step",
+      );
+    }
     if (step.risk === "irreversible" && !unattended && handoff) {
       const answer = await handoff.approval({
         stepId: step.id,
@@ -733,7 +761,9 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
         category: "unexpected_state",
         step: checkpoint,
         expected: JSON.stringify(predicate),
-        observed: "The checkpoint predicate does not hold on the final screen",
+        observed: `The checkpoint predicate does not hold on the final screen${
+          "outputParsed" in predicate ? "" : await whyNot(bind(predicate))
+        }`,
         screen: true,
       });
     }

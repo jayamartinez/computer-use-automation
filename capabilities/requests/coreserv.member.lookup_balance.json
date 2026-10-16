@@ -1,0 +1,29 @@
+{
+  "id": "coreserv.member.lookup_balance",
+  "goal": "Look up the member by member number and read their current Savings balance.",
+  "description": "Read a member's current savings balance.",
+  "tenant": "lakeside",
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "pattern": "^\\d{5}$",
+      "sensitivity": "identifier",
+      "description": "Member number",
+      "value": "10042",
+      "example": "10042"
+    }
+  },
+  "outputs": {
+    "savingsBalance": {
+      "type": "money",
+      "currency": "USD",
+      "sensitivity": "financial",
+      "description": "Current balance of the member's Savings account"
+    }
+  },
+  "verifyInputs": { "memberId": "10077" },
+  "probes": [
+    { "code": "MEMBER_NOT_FOUND", "inputs": { "memberId": "99999" } },
+    { "code": "PERMISSION_DENIED", "inputs": { "memberId": "10200" } }
+  ]
+}
