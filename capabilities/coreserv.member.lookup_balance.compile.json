@@ -1,0 +1,69 @@
+{
+  "traceId": "20261015T225901-c845113e",
+  "flags": [
+    {
+      "kind": "single_strategy",
+      "message": "#2 fill: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#3 click: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#5 extract: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "identity memberId: only one locator strategy was unique"
+    }
+  ],
+  "steps": [
+    {
+      "id": "click_member_inquiry",
+      "from": 1
+    },
+    {
+      "id": "fill_member_number",
+      "from": 2
+    },
+    {
+      "id": "click_search",
+      "from": 3
+    },
+    {
+      "id": "click_view",
+      "from": 4
+    },
+    {
+      "id": "extract_savings_balance",
+      "from": 5
+    }
+  ],
+  "targets": {
+    "member_inquiry_link": {
+      "strategies": 2
+    },
+    "member_number_field": {
+      "strategies": 1
+    },
+    "search_button": {
+      "strategies": 1
+    },
+    "view_link": {
+      "strategies": 2
+    },
+    "savings_balance_cell": {
+      "strategies": 1
+    },
+    "member_no_cell": {
+      "strategies": 1
+    }
+  },
+  "contentHash": "sha256:e74e192d16fd9147fcf3ffa17ccd8d142d0afcee00b282c0bc3c778d4a1a9dfe",
+  "verification": {
+    "runId": "20261015T230207-0746dde8",
+    "status": "success",
+    "warnings": []
+  }
+}
