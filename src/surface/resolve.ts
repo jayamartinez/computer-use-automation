@@ -71,12 +71,20 @@ function byAnchor(
   ofRole: ObservedElement[],
   strategy: Extract<Strategy, { kind: "anchor" }>,
 ): ObservedElement[] {
-  const anchors = textElements(elements, strategy.text);
-  const [anchor] = anchors;
-  // An anchor that appears more than once cannot say which control is meant.
-  if (anchors.length !== 1 || !anchor) return [];
-  const a = anchor.bounds;
-  switch (strategy.relation) {
+  // An anchor text that appears more than once names a control per occurrence; unless they
+  // all name the same one, the caller sees several matches and reports ambiguity, not absence.
+  const matches = textElements(elements, strategy.text).flatMap((anchor) =>
+    fromAnchor(ofRole, anchor.bounds, strategy.relation),
+  );
+  return matches.filter((e, i) => matches.indexOf(e) === i);
+}
+
+function fromAnchor(
+  ofRole: ObservedElement[],
+  a: Box,
+  relation: Extract<Strategy, { kind: "anchor" }>["relation"],
+): ObservedElement[] {
+  switch (relation) {
     case "same_row":
       return ofRole.filter((e) => overlapsY(e.bounds, a) && !contains(e.bounds, a));
     case "right_of":
@@ -90,7 +98,7 @@ function byAnchor(
         (e) => e.bounds.y - bottom(a),
       );
     default:
-      return strategy.relation satisfies never;
+      return relation satisfies never;
   }
 }
 

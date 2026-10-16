@@ -107,14 +107,22 @@ describe("anchor", () => {
     ).toEqual({ kind: "ambiguous", count: 2 });
   });
 
-  it("refuses an anchor text that appears twice", () => {
-    const twice = [...form, el("text", "Member Number", 0, 200)];
+  it("is ambiguous when the anchor text appears twice beside different controls", () => {
+    const twice = [...form, el("text", "Member Number", 0, 200), el("textbox", "", 100, 200)];
     expect(
       resolveTarget(
         twice,
         target("textbox", { kind: "anchor", text: "Member Number", relation: "right_of" }),
       ),
-    ).toEqual({ kind: "none" });
+    ).toEqual({ kind: "ambiguous", count: 2 });
+    // A duplicate label with nothing beside it still names the one control.
+    const lone = [...form, el("text", "Member Number", 0, 200)];
+    expect(
+      resolveTarget(
+        lone,
+        target("textbox", { kind: "anchor", text: "Member Number", relation: "right_of" }),
+      ),
+    ).toMatchObject({ kind: "unique" });
   });
 
   it("resolves below and same_row", () => {

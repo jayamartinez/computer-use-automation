@@ -78,13 +78,19 @@ const PolicySchema = z.strictObject({
 });
 export type Policy = z.infer<typeof PolicySchema>;
 
-export const TenantSchema = z.strictObject({
-  tenant: z.string(),
-  product: z.string(),
-  deployedVersion: z.string(),
-  baseUrl: z.url(),
-  // References only. A credential value never appears in a file.
-  credentials: z.record(z.string(), z.string().regex(/^env:[A-Z][A-Z0-9_]*$/)),
-  policy: PolicySchema,
-});
+export const TenantSchema = z
+  .strictObject({
+    tenant: z.string(),
+    product: z.string(),
+    deployedVersion: z.string(),
+    baseUrl: z.url(),
+    // References only. A credential value never appears in a file.
+    credentials: z.record(z.string(), z.string().regex(/^env:[A-Z][A-Z0-9_]*$/)),
+    policy: PolicySchema,
+  })
+  .refine((tenant) => tenant.policy.origins.includes(new URL(tenant.baseUrl).origin), {
+    // Otherwise the first navigation is blocked by the tenant's own allowlist.
+    message: "baseUrl's origin must be one of policy.origins",
+    path: ["baseUrl"],
+  });
 export type Tenant = z.infer<typeof TenantSchema>;

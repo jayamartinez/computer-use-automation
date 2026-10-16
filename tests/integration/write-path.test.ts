@@ -120,10 +120,11 @@ describe("replay: open_subaccount against the real demo app", () => {
         outputsVerified: false,
       },
     });
-    expect(events.some((e) => e.event === "dispatch_irreversible")).toBe(false);
-    expect(events).toContainEqual(
-      expect.objectContaining({ event: "action_denied", rule: "irreversible_unapproved" }),
+    if (result.status !== "failure") throw new Error("unreachable");
+    expect(result.failure.observed).toBe(
+      "The capability is a draft; it needs an operator to approve the step",
     );
+    expect(events.some((e) => e.event === "dispatch_irreversible")).toBe(false);
     expect(await savings("10077")).toEqual({ amount: "15902.66", currency: "USD" });
   });
 
