@@ -129,3 +129,15 @@ Short records of the decisions that shape this project. Each has the decision, t
 **Decision.** Design notes live in separate "Notes (Paper only)" artboards under each mockup. The demo app renders only what is on the screen artboards, and a test checks that no note text appears in any rendered page.
 **Why.** Evidence is captured from rendered pages. Note text in the app would leak design reasoning into screenshots and give the model hints a real legacy app would never give.
 **Cost.** None.
+
+## D22. The pre-commit read-back covers every input, unless the request exempts it
+
+**Decision.** The compiler refuses a trace unless the `assert` before each irreversible step checks every declared input. An input the commit screen does not show may be listed in the capability request's optional `readbackExempt`, which must name declared inputs. The compile report lists, per irreversible step, which inputs were checked and which were exempt.
+**Why.** A read-back of whatever happened to be on screen let a commit check the member and not the amount, and still compile. The person asking for the capability knows which values the commit screen shows, so the exemption is theirs to declare and a reviewer can see it.
+**Cost.** A write flow whose commit screen omits an input cannot compile until the request says so.
+
+## D23. Operational errors are a failure category of their own
+
+**Decision.** A browser that fails to start, an entry URL that does not load, or an exception thrown during replay ends in `failure` with category `runtime_error`, and `result.json` is written. `sideEffects` is `possible` if an irreversible step was already dispatched, otherwise `none`.
+**Why.** A calling agent must always get the result contract, including when the cause is outside the artifact and profile. Folding these into `unexpected_state` or `app_error` would claim something about the application's screen that was never observed.
+**Cost.** None beyond one more category for callers to handle.
