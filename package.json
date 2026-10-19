@@ -9,6 +9,9 @@
   "scripts": {
     "app": "tsx demo-app/main.ts",
     "replay": "tsx src/cli/main.ts replay",
+    "discover": "tsx src/cli/main.ts discover",
+    "compile": "tsx src/cli/main.ts compile",
+    "evidence": "tsx scripts/run-evidence.mts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && prettier --check .",

@@ -1,0 +1,23 @@
+{"seq":1,"ts":"2026-10-19T15:01:20.030Z","event":"run_start","runId":"20261019T150119-8f74fe49","capability":"coreserv.member.lookup_balance","version":"1.1.0","contentHash":"sha256:45a860cf36313de3ef0b51e41e154b014f4e08264d413d17b8ce2e368f1340da","tenant":"lakeside","inputs":{"memberId":"***77"}}
+{"seq":2,"ts":"2026-10-19T15:01:20.076Z","event":"action","stepId":"login_1","intent":"Sign in (app profile)","action":"fill","target":"login.steps[0]","risk":"reversible","value":"{{secrets.operatorId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":21}
+{"seq":3,"ts":"2026-10-19T15:01:20.087Z","event":"action","stepId":"login_2","intent":"Sign in (app profile)","action":"fill","target":"login.steps[1]","risk":"reversible","value":"{{secrets.password}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":11}
+{"seq":4,"ts":"2026-10-19T15:01:20.148Z","event":"action","stepId":"login_3","intent":"Sign in (app profile)","action":"click","target":"login.steps[2]","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":60}
+{"seq":5,"ts":"2026-10-19T15:01:20.374Z","event":"action","stepId":"click_member_inquiry","intent":"Open Member Inquiry to look up member {{inputs.memberId}}.","action":"click","target":"member_inquiry_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":58}
+{"seq":6,"ts":"2026-10-19T15:01:20.525Z","event":"state","stepId":"click_member_inquiry","matched":"expected state","ms":150}
+{"seq":7,"ts":"2026-10-19T15:01:20.525Z","event":"step_ok","stepId":"click_member_inquiry"}
+{"seq":8,"ts":"2026-10-19T15:01:20.571Z","event":"action","stepId":"fill_member_number","intent":"Enter the member number to search.","action":"fill","target":"member_number_field","risk":"reversible","value":"{{inputs.memberId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":46}
+{"seq":9,"ts":"2026-10-19T15:01:20.598Z","event":"state","stepId":"fill_member_number","matched":"expected state","ms":26}
+{"seq":10,"ts":"2026-10-19T15:01:20.599Z","event":"step_ok","stepId":"fill_member_number"}
+{"seq":11,"ts":"2026-10-19T15:01:20.648Z","event":"action","stepId":"click_search","intent":"Member number is filled; run the search.","action":"click","target":"search_button","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":49}
+{"seq":12,"ts":"2026-10-19T15:01:20.802Z","event":"state","stepId":"click_search","matched":"expected state","ms":154}
+{"seq":13,"ts":"2026-10-19T15:01:20.802Z","event":"step_ok","stepId":"click_search"}
+{"seq":14,"ts":"2026-10-19T15:01:20.848Z","event":"action","stepId":"click_view","intent":"Open the member {{inputs.memberId}} record to find account balances.","action":"click","target":"view_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":46}
+{"seq":15,"ts":"2026-10-19T15:01:20.860Z","event":"state","stepId":"click_view","matched":"condition password_expiry_alert","ms":12}
+{"seq":16,"ts":"2026-10-19T15:01:20.860Z","event":"condition","stepId":"click_view","condition":"password_expiry_alert","disposition":"recover"}
+{"seq":17,"ts":"2026-10-19T15:01:20.861Z","event":"action","stepId":"click_view","intent":"Recover from password_expiry_alert (app profile)","action":"click","target":"password_expiry_alert.handler","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":1}
+{"seq":18,"ts":"2026-10-19T15:01:20.912Z","event":"state","stepId":"click_view","matched":"expected state","ms":20}
+{"seq":19,"ts":"2026-10-19T15:01:20.912Z","event":"step_ok","stepId":"click_view"}
+{"seq":20,"ts":"2026-10-19T15:01:20.932Z","event":"action","stepId":"extract_savings_balance","intent":"Savings row balance for member {{inputs.memberId}} is [masked].","action":"extract","target":"savings_balance_cell","risk":"read","policy":"extract:read","strategy":"table_cell","strategyIndex":0,"ms":20}
+{"seq":21,"ts":"2026-10-19T15:01:20.932Z","event":"step_ok","stepId":"extract_savings_balance"}
+{"seq":22,"ts":"2026-10-19T15:01:20.952Z","event":"checkpoint_ok"}
+{"seq":23,"ts":"2026-10-19T15:01:20.952Z","event":"run_end","status":"success","outputs":{"savingsBalance":"[financial]"}}

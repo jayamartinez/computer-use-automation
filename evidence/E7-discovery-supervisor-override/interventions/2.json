@@ -1,0 +1,25 @@
+{
+  "id": "20261019T151439-296c3ee5-i2",
+  "runId": "20261019T151439-296c3ee5",
+  "kind": "approval",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "discovery"
+  },
+  "stepId": "d16",
+  "intent": "Review matches the inputs and the supervisor override is approved, so confirm the opening.",
+  "reason": "\"Confirm\" is a commit control (irreversible)",
+  "inputs": {
+    "memberId": "***77",
+    "accountType": "{{inputs.accountType}}",
+    "nickname": "{{inputs.nickname}}",
+    "openingDeposit": "[financial]"
+  },
+  "screenshot": "runs\\20261019T151439-296c3ee5\\interventions\\2.png",
+  "allowedResponses": [
+    "approve",
+    "deny"
+  ],
+  "epoch": 4,
+  "createdAt": "2026-10-19T15:16:38.783Z"
+}

@@ -1,0 +1,25 @@
+{
+  "id": "20261016T031530-7dcfd6a7-i1",
+  "runId": "20261016T031530-7dcfd6a7",
+  "kind": "approval",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "1.0.0"
+  },
+  "stepId": "click_confirm",
+  "intent": "Review details match all declared inputs, so confirm the sub-account opening.",
+  "reason": "The capability is a draft, not approved for unattended runs",
+  "inputs": {
+    "memberId": "***77",
+    "accountType": "Money Market",
+    "nickname": "Rainy Day",
+    "openingDeposit": "[financial]"
+  },
+  "screenshot": "runs\\20261016T031530-7dcfd6a7\\interventions\\1.png",
+  "allowedResponses": [
+    "approve",
+    "deny"
+  ],
+  "epoch": 1,
+  "createdAt": "2026-10-16T03:15:32.354Z"
+}

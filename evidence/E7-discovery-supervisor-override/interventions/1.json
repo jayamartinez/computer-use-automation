@@ -1,0 +1,26 @@
+{
+  "id": "20261019T151439-296c3ee5-i1",
+  "runId": "20261019T151439-296c3ee5",
+  "kind": "takeover",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "discovery"
+  },
+  "stepId": "d10",
+  "intent": "The model asked for a person",
+  "reason": "Condition supervisor_override needs a person",
+  "inputs": {
+    "memberId": "***77",
+    "accountType": "{{inputs.accountType}}",
+    "nickname": "{{inputs.nickname}}",
+    "openingDeposit": "[financial]"
+  },
+  "screenshot": "runs\\20261019T151439-296c3ee5\\interventions\\1.png",
+  "allowedResponses": [
+    "claim",
+    "abort",
+    "return"
+  ],
+  "epoch": 1,
+  "createdAt": "2026-10-19T15:15:19.187Z"
+}

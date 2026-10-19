@@ -1,0 +1,466 @@
+{
+  "schemaVersion": 1,
+  "traceId": "20261015T225901-c845113e",
+  "capability": "coreserv.member.lookup_balance",
+  "goal": "Look up the member by member number and read their current Savings balance.",
+  "tenant": "lakeside",
+  "app": {
+    "product": "coreserv",
+    "version": "7.2"
+  },
+  "provider": "openrouter:anthropic/claude-haiku-5.5",
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "sensitivity": "identifier"
+    }
+  },
+  "outputs": {
+    "savingsBalance": {
+      "type": "money",
+      "sensitivity": "financial"
+    }
+  },
+  "startedAt": "2026-10-15T22:59:01.865Z",
+  "finishedAt": "2026-10-15T22:59:20.147Z",
+  "events": [
+    {
+      "seq": 1,
+      "actor": "automation",
+      "observation": {
+        "id": "43e38b0c-fd5b-4680-8369-1d76eff83baa",
+        "fingerprint": "8622e8d90060cb81",
+        "screenshot": "screenshots/d1.png",
+        "dump": "observations/d1.json"
+      },
+      "decision": {
+        "ref": "e7",
+        "rationale": "Open Member Inquiry to look up member {{inputs.memberId}}.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e7",
+          "rationale": "Open Member Inquiry to look up member {{inputs.memberId}}."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 3770,
+          "completionTokens": 86,
+          "cost": 0.00042
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "link",
+        "scope": [
+          "nav"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "Member Inquiry",
+            "unique": true
+          },
+          {
+            "kind": "anchor",
+            "text": "Main Menu",
+            "relation": "below",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "c36e4b14a646301f",
+        "settleMs": 311
+      }
+    },
+    {
+      "seq": 2,
+      "actor": "automation",
+      "observation": {
+        "id": "e2f92a9d-3e42-4e69-ace1-6a676d8254a6",
+        "fingerprint": "c36e4b14a646301f",
+        "screenshot": "screenshots/d2.png",
+        "dump": "observations/d2.json"
+      },
+      "decision": {
+        "ref": "e16",
+        "value": {
+          "input": "memberId"
+        },
+        "rationale": "Enter the member number to search.",
+        "action": "fill"
+      },
+      "raw": {
+        "toolName": "fill",
+        "arguments": {
+          "ref": "e16",
+          "value": {
+            "input": "memberId"
+          },
+          "rationale": "Enter the member number to search."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 3834,
+          "completionTokens": 109,
+          "cost": 0.0004379
+        }
+      },
+      "policy": {
+        "risk": "reversible",
+        "rule": "fill:reversible",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "textbox",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Member Number",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "c36e4b14a646301f",
+        "settleMs": 0
+      }
+    },
+    {
+      "seq": 3,
+      "actor": "automation",
+      "observation": {
+        "id": "d12d2f6c-ed7d-40eb-9f0a-c1e8d11d5629",
+        "fingerprint": "c36e4b14a646301f",
+        "screenshot": "screenshots/d3.png",
+        "dump": "observations/d3.json"
+      },
+      "decision": {
+        "ref": "e14",
+        "rationale": "Member number is filled; run the search.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e14",
+          "rationale": "Member number is filled; run the search."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 3865,
+          "completionTokens": 80,
+          "cost": 0.0004265
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "button",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "Search",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "e6ef9c9b0650760f",
+        "settleMs": 313
+      }
+    },
+    {
+      "seq": 4,
+      "actor": "automation",
+      "observation": {
+        "id": "c7cfdbf4-d380-417d-aea8-75ef458ebe60",
+        "fingerprint": "e6ef9c9b0650760f",
+        "screenshot": "screenshots/d4.png",
+        "dump": "observations/d4.json"
+      },
+      "decision": {
+        "ref": "e14",
+        "rationale": "Open the member {{inputs.memberId}} record to find account balances.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e14",
+          "rationale": "Open the member {{inputs.memberId}} record to find account balances."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 3920,
+          "completionTokens": 84,
+          "cost": 0.000434
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "link",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "View",
+            "unique": true
+          },
+          {
+            "kind": "table_cell",
+            "headers": [
+              "Member No",
+              "Action"
+            ],
+            "row": {
+              "column": "Member No",
+              "equals": "{{inputs.memberId}}"
+            },
+            "column": "Action",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "5491fee0a62f8c60",
+        "settleMs": 309
+      }
+    },
+    {
+      "seq": 5,
+      "actor": "automation",
+      "observation": {
+        "id": "606fccc0-dd1a-475c-9457-38eb0af055ff",
+        "fingerprint": "5491fee0a62f8c60",
+        "screenshot": "screenshots/d5.png",
+        "dump": "observations/d5.json"
+      },
+      "decision": {
+        "ref": "e37",
+        "output": "savingsBalance",
+        "rationale": "Savings row balance for member {{inputs.memberId}} is [masked].",
+        "action": "extract"
+      },
+      "raw": {
+        "toolName": "extract",
+        "arguments": {
+          "ref": "e37",
+          "output": "savingsBalance",
+          "rationale": "Savings row balance for member {{inputs.memberId}} is [masked]."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4217,
+          "completionTokens": 116,
+          "cost": 0.0004797
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "extract:read",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "table_cell",
+            "headers": [
+              "Type",
+              "Balance"
+            ],
+            "row": {
+              "column": "Type",
+              "equals": "Savings"
+            },
+            "column": "Balance",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "extracted": {
+          "output": "savingsBalance",
+          "parsed": true
+        }
+      }
+    },
+    {
+      "seq": 6,
+      "actor": "automation",
+      "observation": {
+        "id": "a611c5eb-bc91-4945-bec5-90902dba2f7d",
+        "fingerprint": "5491fee0a62f8c60",
+        "screenshot": "screenshots/d6.png",
+        "dump": "observations/d6.json"
+      },
+      "decision": {
+        "summary": "Member {{inputs.memberId}} ([masked]) was found; the Savings account [masked] has a balance of [masked], extracted as savingsBalance at step #5.",
+        "evidenceRefs": [
+          "e19",
+          "e35",
+          "e36",
+          "e37"
+        ],
+        "rationale": "The extracted Savings balance matches the Member Profile for member {{inputs.memberId}}, so the goal is complete.",
+        "action": "finish"
+      },
+      "raw": {
+        "toolName": "finish",
+        "arguments": {
+          "summary": "Member {{inputs.memberId}} ([masked]) was found; the Savings account [masked] has a balance of [masked], extracted as savingsBalance at step #5.",
+          "evidenceRefs": [
+            "e19",
+            "e35",
+            "e36",
+            "e37"
+          ],
+          "rationale": "The extracted Savings balance matches the Member Profile for member {{inputs.memberId}}, so the goal is complete."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4241,
+          "completionTokens": 315,
+          "cost": 0.0005816
+        }
+      },
+      "result": {
+        "status": "finished"
+      }
+    }
+  ],
+  "end": {
+    "kind": "finish",
+    "summary": "Member {{inputs.memberId}} ([masked]) was found; the Savings account [masked] has a balance of [masked], extracted as savingsBalance at step #5.",
+    "evidence": [
+      {
+        "ref": "e19",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Member No",
+            "relation": "right_of",
+            "unique": true
+          },
+          {
+            "kind": "anchor",
+            "text": "Member Profile",
+            "relation": "below",
+            "unique": false
+          }
+        ]
+      },
+      {
+        "ref": "e35",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": []
+      },
+      {
+        "ref": "e36",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Checking",
+            "relation": "below",
+            "unique": true
+          }
+        ]
+      },
+      {
+        "ref": "e37",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "table_cell",
+            "headers": [
+              "Type",
+              "Balance"
+            ],
+            "row": {
+              "column": "Type",
+              "equals": "Savings"
+            },
+            "column": "Balance",
+            "unique": true
+          }
+        ]
+      }
+    ],
+    "identity": [
+      {
+        "ref": "e19",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Member No",
+            "relation": "right_of",
+            "unique": true
+          },
+          {
+            "kind": "anchor",
+            "text": "Member Profile",
+            "relation": "below",
+            "unique": false
+          }
+        ],
+        "input": "memberId"
+      }
+    ]
+  },
+  "outputs_bound": {
+    "savingsBalance": {
+      "step": 5
+    }
+  },
+  "cost": 0.0027796999999999995
+}

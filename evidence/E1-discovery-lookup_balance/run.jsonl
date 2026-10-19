@@ -1,0 +1,22 @@
+{"seq":1,"ts":"2026-10-15T22:59:01.865Z","event":"discovery_start","capability":"coreserv.member.lookup_balance","goal":"Look up the member by member number and read their current Savings balance.","provider":"openrouter:anthropic/claude-haiku-5.5"}
+{"seq":2,"ts":"2026-10-15T22:59:01.909Z","event":"action","stepId":"login_1","intent":"Sign in (app profile)","action":"fill","target":"login.steps[0]","risk":"reversible","value":"{{secrets.operatorId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":21}
+{"seq":3,"ts":"2026-10-15T22:59:01.921Z","event":"action","stepId":"login_2","intent":"Sign in (app profile)","action":"fill","target":"login.steps[1]","risk":"reversible","value":"{{secrets.password}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":11}
+{"seq":4,"ts":"2026-10-15T22:59:01.977Z","event":"action","stepId":"login_3","intent":"Sign in (app profile)","action":"click","target":"login.steps[2]","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":56}
+{"seq":5,"ts":"2026-10-15T22:59:05.749Z","event":"model_decision","provider":"openrouter:anthropic/claude-haiku-5.5","tool":"click","usage":{"promptTokens":3770,"completionTokens":86,"cost":0.00042}}
+{"seq":6,"ts":"2026-10-15T22:59:05.795Z","event":"action","stepId":"d1","intent":"Open Member Inquiry to look up member {{inputs.memberId}}.","action":"click","target":"d1_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":45}
+{"seq":1,"ts":"2026-10-15T22:59:06.107Z","event":"trace_event","actor":"automation","decision":"click","result":"ok"}
+{"seq":8,"ts":"2026-10-15T22:59:09.268Z","event":"model_decision","provider":"openrouter:anthropic/claude-haiku-5.5","tool":"fill","usage":{"promptTokens":3834,"completionTokens":109,"cost":0.0004379}}
+{"seq":9,"ts":"2026-10-15T22:59:09.301Z","event":"action","stepId":"d2","intent":"Enter the member number to search.","action":"fill","target":"d2_textbox","risk":"reversible","value":"{{inputs.memberId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":32}
+{"seq":2,"ts":"2026-10-15T22:59:09.302Z","event":"trace_event","actor":"automation","decision":"fill","result":"ok"}
+{"seq":11,"ts":"2026-10-15T22:59:11.127Z","event":"model_decision","provider":"openrouter:anthropic/claude-haiku-5.5","tool":"click","usage":{"promptTokens":3865,"completionTokens":80,"cost":0.0004265}}
+{"seq":12,"ts":"2026-10-15T22:59:11.160Z","event":"action","stepId":"d3","intent":"Member number is filled; run the search.","action":"click","target":"d3_button","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":33}
+{"seq":3,"ts":"2026-10-15T22:59:11.473Z","event":"trace_event","actor":"automation","decision":"click","result":"ok"}
+{"seq":14,"ts":"2026-10-15T22:59:13.635Z","event":"model_decision","provider":"openrouter:anthropic/claude-haiku-5.5","tool":"click","usage":{"promptTokens":3920,"completionTokens":84,"cost":0.000434}}
+{"seq":15,"ts":"2026-10-15T22:59:13.677Z","event":"action","stepId":"d4","intent":"Open the member {{inputs.memberId}} record to find account balances.","action":"click","target":"d4_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":41}
+{"seq":4,"ts":"2026-10-15T22:59:13.986Z","event":"trace_event","actor":"automation","decision":"click","result":"ok"}
+{"seq":17,"ts":"2026-10-15T22:59:15.970Z","event":"model_decision","provider":"openrouter:anthropic/claude-haiku-5.5","tool":"extract","usage":{"promptTokens":4217,"completionTokens":116,"cost":0.0004797}}
+{"seq":18,"ts":"2026-10-15T22:59:15.992Z","event":"action","stepId":"d5","intent":"Savings row balance for member {{inputs.memberId}} is [masked].","action":"extract","target":"d5_cell","risk":"read","policy":"extract:read","strategy":"table_cell","strategyIndex":0,"ms":21}
+{"seq":5,"ts":"2026-10-15T22:59:15.992Z","event":"trace_event","actor":"automation","decision":"extract","result":"ok"}
+{"seq":20,"ts":"2026-10-15T22:59:20.146Z","event":"model_decision","provider":"openrouter:anthropic/claude-haiku-5.5","tool":"finish","usage":{"promptTokens":4241,"completionTokens":315,"cost":0.0005816}}
+{"seq":6,"ts":"2026-10-15T22:59:20.146Z","event":"trace_event","actor":"automation","decision":"finish","result":"finished"}
+{"seq":22,"ts":"2026-10-15T22:59:20.147Z","event":"discovery_end","kind":"finish"}

@@ -1,0 +1,183 @@
+{
+  "traceId": "20261016T031437-659505f6",
+  "flags": [
+    {
+      "kind": "single_strategy",
+      "message": "#2 fill: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#3 click: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#5 click: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#6 fill: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#7 fill: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#8 select: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#10 click: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#11 extract: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#12 extract: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#10 read-back memberId: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#10 read-back accountType: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#10 read-back nickname: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "#10 read-back openingDeposit: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "identity memberId: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "identity accountType: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "identity nickname: only one locator strategy was unique"
+    },
+    {
+      "kind": "single_strategy",
+      "message": "identity openingDeposit: only one locator strategy was unique"
+    }
+  ],
+  "steps": [
+    {
+      "id": "click_member_inquiry",
+      "from": 1
+    },
+    {
+      "id": "fill_member_number",
+      "from": 2
+    },
+    {
+      "id": "click_search",
+      "from": 3
+    },
+    {
+      "id": "click_view",
+      "from": 4
+    },
+    {
+      "id": "click_open_sub_account",
+      "from": 5
+    },
+    {
+      "id": "fill_nickname",
+      "from": 6
+    },
+    {
+      "id": "fill_opening_deposit",
+      "from": 7
+    },
+    {
+      "id": "select_account_type",
+      "from": 8
+    },
+    {
+      "id": "click_continue",
+      "from": 9
+    },
+    {
+      "id": "assert_before_click_confirm",
+      "from": 10
+    },
+    {
+      "id": "click_confirm",
+      "from": 10
+    },
+    {
+      "id": "extract_new_account_no",
+      "from": 11
+    },
+    {
+      "id": "extract_confirmation_ref",
+      "from": 12
+    }
+  ],
+  "targets": {
+    "member_inquiry_link": {
+      "strategies": 2
+    },
+    "member_number_field": {
+      "strategies": 1
+    },
+    "search_button": {
+      "strategies": 1
+    },
+    "view_link": {
+      "strategies": 2
+    },
+    "open_sub_account_button": {
+      "strategies": 1
+    },
+    "nickname_field": {
+      "strategies": 1
+    },
+    "opening_deposit_field": {
+      "strategies": 1
+    },
+    "account_type_select": {
+      "strategies": 1
+    },
+    "continue_button": {
+      "strategies": 2
+    },
+    "confirm_button": {
+      "strategies": 1
+    },
+    "new_account_no_cell": {
+      "strategies": 1
+    },
+    "confirmation_ref_cell": {
+      "strategies": 1
+    },
+    "member_no_cell": {
+      "strategies": 1
+    },
+    "account_type_cell": {
+      "strategies": 1
+    },
+    "nickname_cell": {
+      "strategies": 1
+    },
+    "opening_deposit_cell": {
+      "strategies": 1
+    }
+  },
+  "contentHash": "sha256:4708f377a3e37e10d6d4bf105e2f31124fb8a6199232a1b9efa31eb995c0e1cf",
+  "verification": {
+    "runId": "20261016T031530-7dcfd6a7",
+    "status": "success",
+    "warnings": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "20261016T041219-3844c568-i1",
+  "runId": "20261016T041219-3844c568",
+  "kind": "takeover",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "1.1.0"
+  },
+  "stepId": "click_continue",
+  "intent": "Form is filled correctly ({{inputs.accountType}}, {{inputs.nickname}}, {{inputs.openingDeposit}}, Savings); submit to proceed.",
+  "condition": "supervisor_override",
+  "reason": "Condition supervisor_override needs a person",
+  "inputs": {
+    "memberId": "***77",
+    "accountType": "Money Market",
+    "nickname": "Rainy Day",
+    "openingDeposit": "[financial]"
+  },
+  "screenshot": "runs\\20261016T041219-3844c568\\interventions\\1.png",
+  "allowedResponses": [
+    "claim",
+    "abort",
+    "return"
+  ],
+  "epoch": 1,
+  "createdAt": "2026-10-16T04:12:21.683Z"
+}

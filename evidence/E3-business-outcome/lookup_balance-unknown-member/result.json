@@ -1,0 +1,20 @@
+{
+  "runId": "20261019T150110-fc77ee1a",
+  "capability": {
+    "id": "coreserv.member.lookup_balance",
+    "version": "1.1.0",
+    "contentHash": "sha256:45a860cf36313de3ef0b51e41e154b014f4e08264d413d17b8ce2e368f1340da"
+  },
+  "tenant": "lakeside",
+  "durationMs": 759,
+  "stepsCompleted": 2,
+  "recoveries": [],
+  "interventions": [],
+  "warnings": [],
+  "log": "runs\\20261019T150110-fc77ee1a\\run.jsonl",
+  "status": "business_outcome",
+  "outcome": {
+    "code": "MEMBER_NOT_FOUND",
+    "atStep": "click_search"
+  }
+}
