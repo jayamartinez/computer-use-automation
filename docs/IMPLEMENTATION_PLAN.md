@@ -317,6 +317,6 @@ Items 1 to 8 were recorded at the first checkpoint (M1, M2, M4, M7 complete; M5 
 | 2026-10-15 | — | 241040a | Human-action capture was silently dead under `tsx` (esbuild `keepNames` injects `__name` into the in-page script; vitest does not). Fixed by sending the script as wrapped source. Found during E7: operator mode exercised end to end with OS-level mouse and keyboard input (not Playwright); takeover, resync, approval and captured actions all verified. A run by the developer is still preferable for the committed evidence. |
 | 2026-10-15 | M11 | d6c30a9 | Discovery loop, request, trace, providers, locator synthesis; real run finished and reproduced offline |
 | 2026-10-15 | M12 | cdc254d | Compiler, verification replay, `compile` command; real trace compiled, verified with 10077, saved and replayed |
-| 2026-10-16 | M13 | (uncommitted) | `open_subaccount` discovered, compiled and approved; pre-commit assert synthesis, locator and masking fixes; scenario runner; E1–E7 evidence |
-| 2026-10-16 | M14 | (uncommitted) | README tested on a clean copy; REPORT; final pass against PDF §3, §6, §7 |
-| 2026-10-19 | — | (uncommitted) | External review fixes (Deviations item 17): discovery irreversible-once and `outcome_unknown`, discovery resync, executor ownership re-check, complete pre-commit read-back with `readbackExempt`, `runtime_error`; REPORT trimmed |
+| 2026-10-16 | M13 | 9e24404, 105a416 | `open_subaccount` discovered, compiled and approved; pre-commit assert synthesis, locator and masking fixes; scenario runner; E1–E7 evidence |
+| 2026-10-16 | M14 | 64b159f | README tested on a clean copy; REPORT; final pass against PDF §3, §6, §7 |
+| 2026-10-19 | — | 9e24404 | External review fixes (Deviations item 17): discovery irreversible-once and `outcome_unknown`, discovery resync, executor ownership re-check, complete pre-commit read-back with `readbackExempt`, `runtime_error`; REPORT trimmed |
