@@ -1,3 +1,7 @@
 * text=auto eol=lf
 *.png binary
 *.pdf binary
+
+# Verbatim run output: collapsed in GitHub diffs and left out of language stats. The index stays visible.
+evidence/** linguist-generated=true
+evidence/README.md -linguist-generated
