@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Artifact } from "../../src/artifact/schema.ts";
 import { RunLog } from "../../src/evidence/run-log.ts";
@@ -7,6 +8,7 @@ import { GuardedExecutor } from "../../src/executor/guarded-executor.ts";
 import { ReplayResultSchema } from "../../src/outcome/result.ts";
 import type { Profile, Tenant } from "../../src/profile/schema.ts";
 import { replay } from "../../src/replay/interpreter.ts";
+import { runReplay } from "../../src/replay/run.ts";
 import { fakeCoreServ, fakeElement, type FakeCoreServOptions } from "../support/fake-coreserv.ts";
 import {
   coreservProfile,
@@ -351,5 +353,130 @@ describe("replay: profile conditions", () => {
       { kind: "slow_load", stepId: "search" },
       { kind: "slow_load", stepId: "open_member" },
     ]);
+  });
+});
+
+describe("replay: operational failures stay inside the result contract", () => {
+  const resultFile = (runsDir: string): unknown => {
+    const [runId] = readdirSync(runsDir);
+    return JSON.parse(readFileSync(join(runsDir, runId!, "result.json"), "utf8"));
+  };
+
+  it("returns and writes a structured failure when the session cannot start", async () => {
+    const runsDir = tempDir();
+    const result = await runReplay({
+      artifact: await lookupArtifact(),
+      inputs: { memberId: "10077" },
+      profile: await coreservProfile(),
+      tenant: await lakeside(),
+      secrets: SECRETS,
+      runsDir,
+      launch: () =>
+        Promise.reject(
+          new Error("page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:4070/"),
+        ),
+    });
+    const expected = {
+      status: "failure",
+      stepsCompleted: 0,
+      failure: {
+        category: "runtime_error",
+        stepId: "launch",
+        observed: "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:4070/",
+        sideEffects: "none",
+        safeToRetry: true,
+        outputsVerified: false,
+      },
+    };
+    expect(ReplayResultSchema.parse(result)).toMatchObject(expected);
+    expect(ReplayResultSchema.parse(resultFile(runsDir))).toMatchObject(expected);
+  });
+
+  it("reports possible side effects when the runtime throws after an irreversible dispatch", async () => {
+    const runsDir = tempDir();
+    const surface = fakeCoreServ({ balances: BALANCES });
+    let closed = false;
+    const act = surface.act.bind(surface);
+    surface.act = async (handle, action) => {
+      await act(handle, action);
+      // The browser dies right after the commit click reaches it.
+      if (surface.actions.length === 3) {
+        surface.firstMatch = () => Promise.reject(new Error("Target page has been closed\nstack"));
+      }
+    };
+    const lookup = withTimeouts(await lookupArtifact(), 150);
+    const artifact: Artifact = {
+      ...lookup,
+      status: "approved",
+      requires: { ...lookup.requires, maxRisk: "irreversible" },
+      steps: lookup.steps.map((s) => (s.id === "search" ? { ...s, risk: "irreversible" } : s)),
+    };
+    const result = await runReplay({
+      artifact,
+      inputs: { memberId: "10077" },
+      profile: await coreservProfile(),
+      tenant: await lakeside(),
+      secrets: SECRETS,
+      runsDir,
+      allowIrreversible: true,
+      launch: () =>
+        Promise.resolve(
+          Object.assign(surface, {
+            close: async () => {
+              closed = true;
+            },
+          }),
+        ),
+    });
+    const expected = {
+      status: "failure",
+      failure: {
+        category: "runtime_error",
+        stepId: "search",
+        observed: "Target page has been closed",
+        sideEffects: "possible",
+        safeToRetry: false,
+      },
+    };
+    expect(ReplayResultSchema.parse(result)).toMatchObject(expected);
+    expect(resultFile(runsDir)).toMatchObject(expected);
+    expect(closed).toBe(true);
+  });
+
+  it("keeps the failure and its side effects when evidence capture itself fails", async () => {
+    const runsDir = tempDir();
+    // The error page appears after the commit click, and the browser dies while it is captured.
+    const surface = fakeCoreServ({ balances: BALANCES, interrupts: { 3: "error" } });
+    surface.screenshot = () => Promise.reject(new Error("Target page has been closed\nstack"));
+    const lookup = withTimeouts(await lookupArtifact(), 150);
+    const artifact: Artifact = {
+      ...lookup,
+      status: "approved",
+      requires: { ...lookup.requires, maxRisk: "irreversible" },
+      steps: lookup.steps.map((s) => (s.id === "search" ? { ...s, risk: "irreversible" } : s)),
+    };
+    const result = await runReplay({
+      artifact,
+      inputs: { memberId: "10077" },
+      profile: await coreservProfile(),
+      tenant: await lakeside(),
+      secrets: SECRETS,
+      runsDir,
+      allowIrreversible: true,
+      launch: () => Promise.resolve(Object.assign(surface, { close: async () => {} })),
+    });
+    const expected = {
+      status: "failure",
+      failure: {
+        category: "app_error",
+        stepId: "open_member",
+        sideEffects: "possible",
+        safeToRetry: false,
+      },
+    };
+    expect(ReplayResultSchema.parse(result)).toMatchObject(expected);
+    expect(resultFile(runsDir)).toMatchObject(expected);
+    if (result.status !== "failure") throw new Error("unreachable");
+    expect(result.failure.evidence).toBeUndefined();
   });
 });

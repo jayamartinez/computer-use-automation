@@ -24,6 +24,9 @@ export class TerminalChannel implements InterventionChannel {
 
   async ask(question: Question, timeoutMs: number): Promise<string | undefined> {
     const deadline = Date.now() + timeoutMs;
+    // Only a line typed after the question is an answer to it: a stray "approve" typed earlier
+    // must never approve an irreversible step nobody has looked at yet.
+    this.pending = [];
     for (;;) {
       process.stderr.write(
         `\n[operator] ${question.prompt}\n  (${question.answers.join(" / ")}) > `,

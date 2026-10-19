@@ -6,7 +6,7 @@ import { RunLog } from "../../src/evidence/run-log.ts";
 import { ControlState } from "../../src/executor/control.ts";
 import { GuardedExecutor } from "../../src/executor/guarded-executor.ts";
 import { HandoffController } from "../../src/handoff/controller.ts";
-import type { InterventionChannel } from "../../src/handoff/channel.ts";
+import type { InterventionChannel, Question } from "../../src/handoff/channel.ts";
 import { TraceSchema } from "../../src/trace/schema.ts";
 import type { DecisionProvider } from "../../src/discovery/llm/provider.ts";
 import { fakeCoreServ, fakeElement, type FakeCoreServOptions } from "../support/fake-coreserv.ts";
@@ -71,12 +71,15 @@ async function run(
     app?: Partial<FakeCoreServOptions>;
     channel?: InterventionChannel;
     request?: CapabilityRequest;
+    /** Lets a test reach the live session, as a scripted operator or a faulty surface. */
+    onSurface?: (surface: ReturnType<typeof fakeCoreServ>) => void;
   } = {},
 ) {
   extractedOnce.clear();
   const tenant = await lakeside();
   const profile = await coreservProfile();
   const surface = fakeCoreServ({ balances: BALANCES, ...options.app });
+  options.onSurface?.(surface);
   const lines: string[] = [];
   const log = new RunLog((line) => lines.push(line), [{ value: "10042", replacement: "***42" }]);
   const control = new ControlState();
@@ -247,6 +250,56 @@ describe("discovery on the fake surface", () => {
     expect(approved.surface.actions.some((a) => a.element.name === "Reset")).toBe(true);
   });
 
+  it("never shows the model a credential, though it sees the rest of the screen", async () => {
+    const banner = fakeElement(["banner"], "text", "Operator: teller01", 600, 10);
+    const app = {
+      extra: { menu: [banner], inquiry: [banner], results: [banner], profile: [banner] },
+    };
+    const seen: string[] = [];
+    const scripted = new ScriptedProvider(lookupScript);
+    const provider: DecisionProvider = {
+      name: scripted.name,
+      decide: (request) => {
+        seen.push(request.user, JSON.stringify(request.observation));
+        return scripted.decide(request);
+      },
+    };
+    const { trace } = await run(provider, { app });
+    expect(trace.end.kind).toBe("finish");
+    expect(seen.join("\n")).not.toContain("teller01");
+    expect(seen.join("\n")).toContain("Operator: [secret]");
+  });
+
+  it("records what an approved commit's screen showed, for the pre-commit read-back", async () => {
+    // A commit control on the profile, which shows the member number being acted for.
+    const app = { extra: { profile: [fakeElement(["workarea"], "button", "Confirm", 300, 400)] } };
+    let committed = false;
+    const { trace } = await run(
+      new ScriptedProvider((screen) => {
+        const confirm = screen.named("button", "Confirm");
+        if (confirm && !committed) {
+          committed = true;
+          return click(confirm.ref);
+        }
+        return lookupScript(screen);
+      }),
+      { app, channel: answers("approve") },
+    );
+    const commit = trace.events.find((e) => e.policy?.risk === "irreversible")!;
+    expect(commit.policy).toMatchObject({ rule: "commit_control", decision: "approved" });
+    expect(commit.readback).toEqual([
+      expect.objectContaining({
+        input: "memberId",
+        role: "cell",
+        candidates: expect.arrayContaining([expect.objectContaining({ unique: true })]),
+      }),
+    ]);
+    // Like every locator in the trace, the read-back never carries the input value itself.
+    expect(JSON.stringify(commit.readback)).not.toContain("10042");
+    // Only the irreversible action carries one.
+    expect(trace.events.filter((e) => e.readback)).toHaveLength(1);
+  });
+
   it("handles a profile condition itself and tells the model what happened", async () => {
     const provider = new ScriptedProvider((screen) => lookupScript(screen));
     const { trace } = await run(provider, { app: { interrupts: { 2: "notice" } } });
@@ -263,5 +316,122 @@ describe("discovery on the fake surface", () => {
     });
     expect(trace.end).toEqual({ kind: "budget", reason: "2 decisions used" });
     expect(trace.events).toHaveLength(2);
+  });
+
+  describe("an irreversible action", () => {
+    const app = { extra: { profile: [fakeElement(["workarea"], "button", "Confirm", 300, 400)] } };
+    const confirms = (surface: ReturnType<typeof fakeCoreServ>) =>
+      surface.actions.filter((a) => a.element.name === "Confirm").length;
+    /** A model that clicks Confirm whenever it sees it, the way a retrying model would. */
+    const keepsConfirming = () =>
+      new ScriptedProvider((screen) => {
+        const confirm = screen.named("button", "Confirm");
+        return confirm ? click(confirm.ref) : lookupScript(screen);
+      });
+    /** The commit reaches the application, then the response is lost. */
+    const lostResponse = (surface: ReturnType<typeof fakeCoreServ>) => {
+      const act = surface.act.bind(surface);
+      surface.act = async (handle, action) => {
+        await act(handle, action);
+        if (surface.actions.at(-1)!.element.name === "Confirm") throw new Error("socket hang up");
+      };
+    };
+    const operator = (unknown: (q: Question) => string) =>
+      new ScriptedChannel((q) => (q.answers.includes("approve") ? "approve" : unknown(q)));
+
+    it("is never dispatched again after its dispatch fails, and a person gives the verdict", async () => {
+      const channel = operator((q) => (q.answers.includes("claim") ? "claim" : "committed"));
+      const provider = keepsConfirming();
+      const { trace, surface, handoff } = await run(provider, {
+        app,
+        channel,
+        onSurface: lostResponse,
+      });
+      expect(confirms(surface)).toBe(1);
+      expect(trace.end.kind).toBe("outcome_unknown");
+      expect(trace.end.reason).toContain("socket hang up");
+      expect(trace.end.reason).toContain("verdict: committed");
+      expect(handoff!.interventions.map((i) => [i.kind, i.resolution])).toEqual([
+        ["approval", "approve"],
+        ["unknown_outcome", "committed"],
+      ]);
+      expect(channel.asked.at(-2)!.prompt).toContain("Do not repeat the action");
+      // The model is never asked what to do after the failed commit.
+      expect(provider.requests).toHaveLength(trace.events.length);
+      expect(trace.events.at(-1)!.result).toMatchObject({ status: "error" });
+      expect(handoff!.state).toBe("FAILED");
+    });
+
+    it("ends the run when nobody checks the failed commit", async () => {
+      const channel = operator(() => "cant_tell");
+      const { trace, surface } = await run(keepsConfirming(), {
+        app,
+        channel,
+        onSurface: lostResponse,
+      });
+      expect(confirms(surface)).toBe(1);
+      expect(trace.end).toMatchObject({ kind: "outcome_unknown" });
+      expect(trace.end.reason).toContain("the check ended as declined");
+    });
+
+    it("is refused, without asking for approval, when the model chooses it again", async () => {
+      let turns = 0;
+      const channel = answers("approve", "approve");
+      const { trace, surface } = await run(
+        new ScriptedProvider((screen) => {
+          const confirm = screen.named("button", "Confirm");
+          if (confirm && turns++ < 2) return click(confirm.ref);
+          return lookupScript(screen);
+        }),
+        { app, channel },
+      );
+      expect(confirms(surface)).toBe(1);
+      expect(channel.asked.filter((q) => q.answers.includes("approve"))).toHaveLength(1);
+      const refused = trace.events.find((e) => e.policy?.rule === "irreversible_once")!;
+      expect(refused.result).toMatchObject({ status: "denied" });
+      expect(trace.end.kind).toBe("finish");
+    });
+  });
+
+  it("resynchronises after a takeover, so a later commit can still be approved", async () => {
+    // The first navigation lands on a supervisor override; the person clears it by moving on.
+    const app = {
+      interrupts: { 1: "override" as const },
+      extra: { profile: [fakeElement(["workarea"], "button", "Confirm", 300, 400)] },
+    };
+    let surface!: ReturnType<typeof fakeCoreServ>;
+    const channel = new ScriptedChannel(async (q) => {
+      if (q.answers.includes("approve")) return "approve";
+      if (q.answers.includes("claim")) return "claim";
+      await surface.actAsHuman(
+        {
+          scope: ["nav"],
+          role: "link",
+          strategies: [{ kind: "role_name", name: "Member Inquiry" }],
+          rationale: "test",
+        },
+        { kind: "click" },
+      );
+      return "return";
+    });
+    let confirmed = false;
+    const { trace, handoff } = await run(
+      new ScriptedProvider((screen) => {
+        const confirm = screen.named("button", "Confirm");
+        if (confirm && !confirmed) {
+          confirmed = true;
+          return click(confirm.ref);
+        }
+        return lookupScript(screen);
+      }),
+      { app, channel, onSurface: (s) => (surface = s) },
+    );
+    expect(handoff!.interventions.map((i) => [i.kind, i.resolution])).toEqual([
+      ["takeover", "returned"],
+      ["approval", "approve"],
+    ]);
+    expect(trace.events.find((e) => e.policy?.decision === "approved")).toBeDefined();
+    expect(trace.end.kind).toBe("finish");
+    expect(handoff!.state).toBe("AUTOMATION_ACTIVE");
   });
 });

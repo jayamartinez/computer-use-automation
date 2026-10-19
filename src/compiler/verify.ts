@@ -2,7 +2,7 @@
 // different from the discovery data, so a locator that silently depended on the discovery
 // record's values fails here instead of in production. The draft is saved only on success.
 
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArtifact, saveArtifact } from "../artifact/store.ts";
 import type { Artifact } from "../artifact/schema.ts";
@@ -21,6 +21,8 @@ export type VerifyOptions = {
   runsDir: string;
   /** A draft never runs an irreversible step unattended; verification of a write capability needs an approver. */
   channel?: InterventionChannel;
+  /** With a channel the browser opens headed for the approver unless this says otherwise. */
+  headed?: boolean;
 };
 
 export async function verifyArtifact(
@@ -35,7 +37,7 @@ export async function verifyArtifact(
     tenant: options.tenant,
     secrets: options.secrets,
     runsDir: options.runsDir,
-    headed: options.channel !== undefined,
+    headed: options.headed ?? options.channel !== undefined,
     ...(options.channel ? { channel: options.channel } : {}),
   });
 }
@@ -67,6 +69,7 @@ export async function compileAndVerify(
   };
   const artifactPath = join(options.outDir, `${request.id}.json`);
   const reportPath = join(options.outDir, `${request.id}.compile.json`);
+  await mkdir(options.outDir, { recursive: true });
   const saved = await saveArtifact(artifactPath, verified);
   await writeFile(
     reportPath,

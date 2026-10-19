@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ArtifactSchema } from "../../src/artifact/schema.ts";
 import { CompileError, compileTrace } from "../../src/compiler/compile.ts";
 import { CapabilityRequestSchema } from "../../src/discovery/request.ts";
 import type { Trace, TraceEvent } from "../../src/trace/schema.ts";
+import { parseTrace } from "../../src/trace/store.ts";
 
 const request = CapabilityRequestSchema.parse({
   id: "coreserv.member.lookup_balance",
@@ -301,10 +303,183 @@ describe("compiler", () => {
     expect(report.flags).toContainEqual(expect.objectContaining({ kind: "literal_value" }));
   });
 
+  describe("an irreversible step", () => {
+    // The lookup's Search stands in for a commit control; only the compiler's handling matters.
+    const memberCell = {
+      input: "memberId",
+      ref: "e12",
+      role: "cell",
+      scope: W,
+      candidates: [
+        { kind: "anchor" as const, text: "Member No", relation: "right_of" as const, unique: true },
+      ],
+    };
+    const amountCell = {
+      input: "amount",
+      ref: "e13",
+      role: "cell",
+      scope: W,
+      candidates: [
+        {
+          kind: "anchor" as const,
+          text: "Opening Deposit",
+          relation: "right_of" as const,
+          unique: true,
+        },
+      ],
+    };
+    const commitSearch = (readback?: TraceEvent["readback"]) =>
+      lookupTrace((events) =>
+        events.map((e) =>
+          e.seq === 3
+            ? {
+                ...e,
+                policy: { risk: "irreversible", rule: "commit_control", decision: "approved" },
+                ...(readback ? { readback } : {}),
+              }
+            : e,
+        ),
+      );
+
+    const withAmount = CapabilityRequestSchema.parse({
+      ...request,
+      inputs: {
+        ...request.inputs,
+        amount: { type: "money", currency: "USD", sensitivity: "financial", value: "250.00" },
+      },
+      verifyInputs: { memberId: "10077", amount: "400.00" },
+    });
+
+    it("is preceded by an assert of what the approved screen showed", () => {
+      const trace = commitSearch([memberCell, amountCell]);
+      // The final screen shows the amount as well; its checkpoint compares it the same way.
+      trace.end.identity = [...(trace.end.identity ?? []), amountCell];
+      const { artifact, report } = compileTrace(trace, withAmount);
+      ArtifactSchema.parse(artifact);
+      expect(artifact.steps.map((s) => s.id).slice(2, 4)).toEqual([
+        "assert_before_click_search",
+        "click_search",
+      ]);
+      expect(artifact.steps[2]).toMatchObject({
+        action: "assert",
+        risk: "read",
+        check: {
+          all: [
+            { cellEquals: { target: "member_no_cell", value: "{{inputs.memberId}}" } },
+            {
+              cellEquals: {
+                target: "opening_deposit_cell",
+                value: "{{inputs.amount}}",
+                as: "money",
+              },
+            },
+          ],
+        },
+      });
+      expect(artifact.steps[3]).toMatchObject({ onTimeout: "outcome_unknown", retry: { max: 0 } });
+      expect(report.steps.slice(2, 4)).toEqual([
+        { id: "assert_before_click_search", from: 3 },
+        { id: "click_search", from: 3 },
+      ]);
+      expect(artifact.outputs.savingsBalance?.fromStep).toBe("extract_savings_balance");
+      expect(artifact.checkpoint.all).toContainEqual({
+        cellEquals: { target: "opening_deposit_cell", value: "{{inputs.amount}}", as: "money" },
+      });
+    });
+
+    it("is refused when nothing on its screen could be read back", () => {
+      expect(() => compileTrace(commitSearch(), request)).toThrow(/not read back for: memberId/);
+    });
+
+    it("is refused when some inputs were not read back, naming them", () => {
+      // Checking the member alone would let the wrong amount be committed to the right member.
+      expect(() => compileTrace(commitSearch([memberCell]), withAmount)).toThrow(
+        /not read back for: amount \(/,
+      );
+    });
+
+    it("compiles without a read-back the request explicitly exempts, and reports it", () => {
+      const exempting = CapabilityRequestSchema.parse({
+        ...withAmount,
+        readbackExempt: ["amount"],
+      });
+      const { artifact, report } = compileTrace(commitSearch([memberCell]), exempting);
+      ArtifactSchema.parse(artifact);
+      expect(artifact.steps[2]).toMatchObject({
+        action: "assert",
+        check: {
+          all: [{ cellEquals: { target: "member_no_cell", value: "{{inputs.memberId}}" } }],
+        },
+      });
+      expect(report.readbacks).toEqual([
+        { step: "click_search", checked: ["memberId"], exempt: ["amount"] },
+      ]);
+    });
+
+    it("is still refused when every input is exempt and nothing is read back", () => {
+      const allExempt = CapabilityRequestSchema.parse({
+        ...withAmount,
+        readbackExempt: ["memberId", "amount"],
+      });
+      expect(() => compileTrace(commitSearch(), allExempt)).toThrow(/no input value to read back/);
+    });
+
+    it("rejects an exemption for an input the request does not declare", () => {
+      const parsed = CapabilityRequestSchema.safeParse({ ...request, readbackExempt: ["amount"] });
+      expect(parsed.success).toBe(false);
+      expect(parsed.error?.issues[0]?.path).toEqual(["readbackExempt", 0]);
+    });
+  });
+
   it("refuses a trace that did not finish or did not bind every output", () => {
     const unfinished = { ...lookupTrace(), end: { kind: "stuck" as const, reason: "looping" } };
     expect(() => compileTrace(unfinished, request)).toThrow(CompileError);
     const unbound = { ...lookupTrace(), outputs_bound: {} };
     expect(() => compileTrace(unbound, request)).toThrow(/never extracted/);
+  });
+});
+
+describe("the saved discovery traces", () => {
+  // Read-only: compiles in memory, never writes to capabilities/ or evidence/.
+  const load = (path: string) => JSON.parse(readFileSync(path, "utf8"));
+  const compileSaved = (id: string, run: string) =>
+    compileTrace(
+      parseTrace(load(`evidence/${run}/trace.json`)),
+      CapabilityRequestSchema.parse(load(`capabilities/requests/${id}.json`)),
+    );
+
+  it("open_subaccount reads back all four inputs before the commit", () => {
+    const { artifact, report } = compileSaved(
+      "coreserv.member.open_subaccount",
+      "E1-discovery-open_subaccount",
+    );
+    ArtifactSchema.parse(artifact);
+    expect(report.readbacks).toHaveLength(1);
+    expect(new Set(report.readbacks[0]!.checked)).toEqual(
+      new Set(["memberId", "accountType", "nickname", "openingDeposit"]),
+    );
+    expect(report.readbacks[0]!.exempt).toEqual([]);
+  });
+
+  it("open_subaccount is refused once three of its read-backs are removed", () => {
+    // The reviewer's case: only the member read-back left before the commit.
+    const trace = parseTrace(load("evidence/E1-discovery-open_subaccount/trace.json"));
+    for (const event of trace.events) {
+      if (event.readback) event.readback = event.readback.filter((r) => r.input === "memberId");
+    }
+    const request = CapabilityRequestSchema.parse(
+      load("capabilities/requests/coreserv.member.open_subaccount.json"),
+    );
+    expect(() => compileTrace(trace, request)).toThrow(
+      /not read back for: accountType, nickname, openingDeposit/,
+    );
+  });
+
+  it("lookup_balance has no irreversible step and still compiles", () => {
+    const { report } = compileSaved(
+      "coreserv.member.lookup_balance",
+      "E1-discovery-lookup_balance",
+    );
+    expect(report.readbacks).toEqual([]);
   });
 });

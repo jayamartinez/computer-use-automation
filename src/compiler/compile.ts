@@ -36,6 +36,8 @@ export type CompileReport = {
   flags: CompileFlag[];
   steps: { id: string; from: number }[];
   targets: Record<string, { strategies: number }>;
+  /** For each irreversible step, which inputs its pre-commit assert checks and which are exempt. */
+  readbacks: { step: string; checked: string[]; exempt: string[] }[];
 };
 
 export class CompileError extends Error {}
@@ -220,18 +222,93 @@ export function compileTrace(
     targetNames.set(event, name);
   }
 
+  // A screen text equal to an input value becomes a check that it still equals that input on
+  // replay; money is compared as an amount, since the screen formats it.
+  const readbackChecks = (
+    found: NonNullable<Trace["end"]["identity"]>,
+    where: string,
+    rationale: string,
+  ): { input: string; check: ArtifactSignature }[] =>
+    found.flatMap((readback) => {
+      const name = addTarget(readback, `${where} ${readback.input}`, rationale);
+      if (!name) return [];
+      const money = request.inputs[readback.input]?.type === "money";
+      return [
+        {
+          input: readback.input,
+          check: {
+            cellEquals: {
+              target: name,
+              value: `{{inputs.${readback.input}}}`,
+              ...(money ? { as: "money" as const } : {}),
+            },
+          },
+        },
+      ];
+    });
+
   // 3. Steps, in order, each with what the screen must show afterwards.
   const steps: Step[] = [];
   const stepIds = new Set<string>();
-  const stepFrom: { id: string; from: number }[] = [];
-  kept.forEach((event, index) => {
-    const { decision, policy } = event;
-    const targetName = targetNames.get(event)!;
-    const base = `${decision.action}_${slug(targetName.replace(/_(field|select|link|button|cell|checkbox|radio)$/, ""))}`;
+  const fromSeq = new Map<string, number>();
+  const stepOf = new Map<ActingEvent, string>();
+  const uniqueId = (base: string): string => {
     let id = base;
     for (let n = 2; stepIds.has(id); n++) id = `${base}_${n}`;
     stepIds.add(id);
-    stepFrom.push({ id, from: event.seq });
+    return id;
+  };
+  // An irreversible step runs only after the screen is checked to show what will be committed:
+  // every declared input, unless the request exempts it because the commit screen does not show
+  // it. One matching value is not enough: a commit that checks the member but not the amount
+  // can still move the wrong money.
+  const exempt = new Set(request.readbackExempt ?? []);
+  const readbackCoverage: CompileReport["readbacks"] = [];
+  const preCommitAssert = (event: ActingEvent, stepId: string): Step => {
+    const found = readbackChecks(
+      event.readback ?? [],
+      `#${event.seq} read-back`,
+      "Read back before the irreversible step: the screen shows what will be committed.",
+    );
+    const checked = new Set(found.map((f) => f.input));
+    const unchecked = Object.keys(request.inputs).filter(
+      (name) => !exempt.has(name) && !checked.has(name),
+    );
+    if (unchecked.length > 0) {
+      throw new CompileError(
+        `#${event.seq} is irreversible but the screen before it was not read back for: ${unchecked.join(", ")} (show them on the commit screen, or list them in the request's readbackExempt)`,
+      );
+    }
+    if (found.length === 0) {
+      throw new CompileError(
+        `#${event.seq} is irreversible but the screen before it showed no input value to read back`,
+      );
+    }
+    const id = uniqueId(`assert_before_${stepId}`);
+    fromSeq.set(id, event.seq);
+    readbackCoverage.push({
+      step: stepId,
+      checked: [...checked],
+      exempt: Object.keys(request.inputs).filter((name) => exempt.has(name)),
+    });
+    return {
+      id,
+      intent: "Check that the screen shows exactly what was asked for before committing",
+      action: "assert",
+      check: { all: found.map((f) => f.check) },
+      risk: "read",
+      timeoutMs: 3_000,
+      retry: { max: 0 },
+    };
+  };
+  kept.forEach((event, index) => {
+    const { decision, policy } = event;
+    const targetName = targetNames.get(event)!;
+    const id = uniqueId(
+      `${decision.action}_${slug(targetName.replace(/_(field|select|link|button|cell|checkbox|radio)$/, ""))}`,
+    );
+    stepOf.set(event, id);
+    fromSeq.set(id, event.seq);
     const risk: Risk = policy?.risk ?? "read";
     const common = {
       id,
@@ -290,6 +367,7 @@ export function compileTrace(
             message: `${id}: the screen did not change after the click, so its expected state may already hold before it`,
           });
         }
+        if (risk === "irreversible") steps.push(preCommitAssert(event, id));
         steps.push({
           ...common,
           action: "click",
@@ -309,19 +387,11 @@ export function compileTrace(
   // record (a Checking row, say), and a contract that requires it fails for every member
   // without one. Cited evidence only stands in for a final click's expected state.
   const checkpoint: Artifact["checkpoint"]["all"] = [];
-  const readbacks = (trace.end.identity ?? []).flatMap((identity) => {
-    const name = addTarget(
-      identity,
-      `identity ${identity.input}`,
-      "Identity read-back: the screen shows which record was handled.",
-    );
-    if (!name) return [];
-    return [
-      {
-        cellEquals: { target: name, value: `{{inputs.${identity.input}}}` },
-      } satisfies ArtifactSignature,
-    ];
-  });
+  const readbacks = readbackChecks(
+    trace.end.identity ?? [],
+    "identity",
+    "Identity read-back: the screen shows which record was handled.",
+  );
   if (readbacks.length === 0) {
     flags.push({
       kind: "no_identity_readback",
@@ -329,7 +399,7 @@ export function compileTrace(
         "The final screen shows no input value; the checkpoint cannot confirm which record was handled",
     });
   }
-  checkpoint.push(...readbacks);
+  checkpoint.push(...readbacks.map((r) => r.check));
   function evidenceTarget(): string | undefined {
     for (const cited of trace.end.evidence ?? []) {
       const name = addTarget(
@@ -348,10 +418,9 @@ export function compileTrace(
       name,
       {
         ...spec,
-        fromStep:
-          stepFrom[
-            kept.findIndex((e) => e.decision.action === "extract" && e.decision.output === name)
-          ]!.id,
+        fromStep: stepOf.get(
+          kept.find((e) => e.decision.action === "extract" && e.decision.output === name)!,
+        )!,
       },
     ]),
   );
@@ -399,10 +468,11 @@ export function compileTrace(
     report: {
       traceId: trace.traceId,
       flags,
-      steps: stepFrom,
+      steps: steps.map((s) => ({ id: s.id, from: fromSeq.get(s.id)! })),
       targets: Object.fromEntries(
         Object.entries(targets).map(([n, t]) => [n, { strategies: t.strategies.length }]),
       ),
+      readbacks: readbackCoverage,
     },
   };
 }

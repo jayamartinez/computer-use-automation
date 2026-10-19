@@ -9,9 +9,9 @@ import { GuardedExecutor } from "../executor/guarded-executor.ts";
 import { requestAllowed } from "../executor/policy.ts";
 import type { InterventionChannel } from "../handoff/channel.ts";
 import { HandoffController } from "../handoff/controller.ts";
-import type { ReplayResult } from "../outcome/result.ts";
+import { safeToRetry, type ReplayResult } from "../outcome/result.ts";
 import type { Profile, Tenant } from "../profile/schema.ts";
-import { PlaywrightSurface } from "../surface/playwright/playwright-surface.ts";
+import { PlaywrightSurface, type LaunchOptions } from "../surface/playwright/playwright-surface.ts";
 import type { Surface } from "../surface/types.ts";
 import { replay } from "./interpreter.ts";
 import { outputAsText } from "../outcome/values.ts";
@@ -37,6 +37,8 @@ export type RunReplayOptions = {
    * session; tests use it to act as the person in it.
    */
   onSurface?: (surface: Surface) => void;
+  /** Opens the session at the entry URL. Tests replace it; everything else uses Playwright. */
+  launch?: (options: LaunchOptions) => Promise<Surface & { close(): Promise<void> }>;
 };
 
 const DEFAULT_HANDOFF_TIMEOUTS = { claimMs: 10 * 60_000, humanMs: 30 * 60_000 };
@@ -66,13 +68,28 @@ export async function runReplay(options: RunReplayOptions): Promise<ReplayResult
     }),
   ]);
 
-  const surface = await PlaywrightSurface.launch({
-    entryUrl: tenant.baseUrl,
-    allowRequest: (url) => requestAllowed(tenant.policy, url),
-    // A person can only take over a window they can see.
-    headed: options.headed ?? channel !== undefined,
-    onBlocked: (url) => log.write("request_blocked", { url }),
-  });
+  const writeResult = (result: ReplayResult): Promise<void> =>
+    writeFile(
+      join(runDir, "result.json"),
+      `${JSON.stringify(maskOutputs(result, artifact), null, 2)}\n`,
+    );
+
+  const launch = options.launch ?? ((o: LaunchOptions) => PlaywrightSurface.launch(o));
+  const started = Date.now();
+  let surface: Awaited<ReturnType<typeof launch>>;
+  try {
+    surface = await launch({
+      entryUrl: tenant.baseUrl,
+      allowRequest: (url) => requestAllowed(tenant.policy, url),
+      // A person can only take over a window they can see.
+      headed: options.headed ?? channel !== undefined,
+      onBlocked: (url) => log.write("request_blocked", { url }),
+    });
+  } catch (error) {
+    const result = startupFailure(error, { runId, artifact, tenant, log, logPath, started });
+    await writeResult(result);
+    return result;
+  }
   options.onSurface?.(surface);
   try {
     // One owner of the session for both the executor and the handoff, so a transfer of
@@ -117,14 +134,58 @@ export async function runReplay(options: RunReplayOptions): Promise<ReplayResult
       allowIrreversible: options.allowIrreversible ?? false,
       ...(handoff ? { handoff } : {}),
     });
-    await writeFile(
-      join(runDir, "result.json"),
-      `${JSON.stringify(maskOutputs(result, artifact), null, 2)}\n`,
-    );
+    await writeResult(result);
     return result;
   } finally {
     await surface.close();
   }
+}
+
+/**
+ * The session never opened (no browser, or the entry URL did not load), so nothing has acted
+ * and the caller may retry, for example once the application is up.
+ */
+function startupFailure(
+  error: unknown,
+  ctx: {
+    runId: string;
+    artifact: Artifact;
+    tenant: Tenant;
+    log: RunLog;
+    logPath: string;
+    started: number;
+  },
+): ReplayResult {
+  const { runId, artifact, tenant, log } = ctx;
+  const message = log.scrubText(
+    error instanceof Error ? error.message.split("\n")[0]! : String(error),
+  );
+  const failure = {
+    category: "runtime_error" as const,
+    stepId: "launch",
+    intent: "Open a session at the tenant's entry URL",
+    expected: "The application's entry page to load",
+    observed: message,
+    sideEffects: "none" as const,
+    safeToRetry: safeToRetry("runtime_error", "none"),
+    outputsVerified: false as const,
+  };
+  log.write("run_start", { runId, capability: artifact.id, version: artifact.version });
+  log.write("runtime_error", { stepId: "launch", message });
+  log.write("run_end", { status: "failure", failure });
+  return {
+    runId,
+    capability: { id: artifact.id, version: artifact.version, contentHash: artifact.contentHash },
+    tenant: tenant.tenant,
+    durationMs: Date.now() - ctx.started,
+    stepsCompleted: 0,
+    recoveries: [],
+    interventions: [],
+    warnings: [],
+    log: ctx.logPath,
+    status: "failure",
+    failure,
+  };
 }
 
 function maskOutputs(result: ReplayResult, artifact: Artifact): unknown {

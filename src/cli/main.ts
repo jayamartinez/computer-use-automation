@@ -16,10 +16,12 @@ import { runReplay } from "../replay/run.ts";
 import { loadTrace } from "../trace/store.ts";
 
 const USAGE = `Usage:
-  replay <capability-id | artifact.json> --input name=value [--input ...] [--tenant lakeside]
+  replay <capability-id | artifact.json> --input name=value [--input ...] [--tenant lakeside | tenant.json]
          [--headed] [--allow-irreversible] [--operator]
   discover <request.json> [--tenant lakeside] [--headed] [--operator] [--recording trace.json]
   compile <trace.json> --request <request.json> [--out capabilities] [--tenant lakeside] [--operator]
+
+--tenant takes a tenant name (profiles/<product>/tenants/<name>.json) or a binding file.
 
 replay: a capability id is looked up in capabilities/<id>.json. --allow-irreversible lets an
 approved artifact run its irreversible steps unattended; a draft never does. --operator puts
@@ -33,6 +35,15 @@ replay a saved trace's model answers without a key.
 compile: turns a trace into a draft artifact, replays it with the request's verifyInputs
 against the live app, and writes <out>/<id>.json only if that succeeds. --operator lets you
 approve an irreversible step during verification.`;
+
+/** A tenant name under profiles/<product>/tenants/, or the path of a binding file. */
+function tenantFile(profileDir: string, tenant: string): string {
+  if (tenant.endsWith(".json")) return tenant;
+  if (!/^[a-z0-9-]+$/.test(tenant)) {
+    throw new Error(`--tenant expects a tenant name or a .json binding file, got "${tenant}"`);
+  }
+  return join(profileDir, "tenants", `${tenant}.json`);
+}
 
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
@@ -72,7 +83,7 @@ async function replay(args: string[]): Promise<number> {
   );
   const profileDir = join("profiles", artifact.app.product);
   const profile = await loadProfile(join(profileDir, "profile.json"));
-  const tenant = await loadTenant(join(profileDir, "tenants", `${values.tenant}.json`));
+  const tenant = await loadTenant(tenantFile(profileDir, values.tenant));
 
   const inputs: Record<string, string> = {};
   for (const pair of values.input) {
@@ -129,7 +140,7 @@ async function discover(args: string[]): Promise<number> {
   const product = request.id.split(".")[0]!;
   const profileDir = join("profiles", product);
   const profile = await loadProfile(join(profileDir, "profile.json"));
-  const tenant = await loadTenant(join(profileDir, "tenants", `${tenantName}.json`));
+  const tenant = await loadTenant(tenantFile(profileDir, tenantName));
 
   let provider: DecisionProvider;
   if (values.recording) {
@@ -208,9 +219,7 @@ ${z.prettifyError(parsed.error)}`);
   const request = parsed.data;
   const profileDir = join("profiles", request.id.split(".")[0]!);
   const profile = await loadProfile(join(profileDir, "profile.json"));
-  const tenant = await loadTenant(
-    join(profileDir, "tenants", `${values.tenant ?? request.tenant}.json`),
-  );
+  const tenant = await loadTenant(tenantFile(profileDir, values.tenant ?? request.tenant));
   const channel = values.operator ? new TerminalChannel() : undefined;
   try {
     const outcome = await compileAndVerify(trace, request, {

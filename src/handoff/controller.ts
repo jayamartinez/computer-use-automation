@@ -105,13 +105,15 @@ export class HandoffController {
       claimTimeoutMs,
     );
     this.record(request, answer ?? "timeout");
-    if (answer === "approve") {
+    // A deny is an answer, not a loss of control: the caller decides what it means (replay
+    // stops; discovery tells the model and carries on, and may ask again later).
+    if (answer === "approve" || answer === "deny") {
       control.transfer("automation");
       this.to("AUTOMATION_ACTIVE");
-      return "approve";
+      return answer;
     }
     this.to("FAILED");
-    return answer === "deny" ? "deny" : "timeout";
+    return "timeout";
   }
 
   /**

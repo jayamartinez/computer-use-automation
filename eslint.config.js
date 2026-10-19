@@ -8,7 +8,7 @@ const restrict = (files, patterns, message) => ({
 });
 
 export default tseslint.config(
-  { ignores: ["node_modules", "dist", "runs", "test-results", "playwright-report"] },
+  { ignores: ["node_modules", "dist", "runs", "test-results", "playwright-report", ".claude"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

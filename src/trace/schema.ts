@@ -44,6 +44,16 @@ const TraceDecisionSchema = z.union([
 ]);
 export type TraceDecision = z.infer<typeof TraceDecisionSchema>;
 
+const EvidenceTargetSchema = z.strictObject({
+  ref: z.string(),
+  role: z.string(),
+  scope: ScopePathSchema,
+  candidates: z.array(CandidateSchema),
+});
+
+/** A text equal to an input value, with its tested locator candidates. */
+const ReadbackTargetSchema = EvidenceTargetSchema.extend({ input: z.string() });
+
 export const TraceEventSchema = z.strictObject({
   seq: z.number().int().positive(),
   actor: z.enum(["automation", "human"]),
@@ -71,6 +81,8 @@ export const TraceEventSchema = z.strictObject({
       candidates: z.array(CandidateSchema),
     })
     .optional(),
+  /** For an irreversible action: input values on the screen it was approved on. */
+  readback: z.array(ReadbackTargetSchema).optional(),
   result: z.strictObject({
     status: z.enum([
       "ok",
@@ -91,13 +103,6 @@ export const TraceEventSchema = z.strictObject({
 });
 export type TraceEvent = z.infer<typeof TraceEventSchema>;
 
-const EvidenceTargetSchema = z.strictObject({
-  ref: z.string(),
-  role: z.string(),
-  scope: ScopePathSchema,
-  candidates: z.array(CandidateSchema),
-});
-
 export const TraceSchema = z.strictObject({
   schemaVersion: z.literal(1),
   traceId: z.string(),
@@ -113,13 +118,24 @@ export const TraceSchema = z.strictObject({
   finishedAt: z.string(),
   events: z.array(TraceEventSchema),
   end: z.strictObject({
-    kind: z.enum(["finish", "need_human", "give_up", "stuck", "budget", "failed", "aborted"]),
+    kind: z.enum([
+      "finish",
+      "need_human",
+      "give_up",
+      "stuck",
+      "budget",
+      "failed",
+      "aborted",
+      // An irreversible action was dispatched and what it did could not be established. The
+      // run ends there: discovery never repeats it and never compiles from that point.
+      "outcome_unknown",
+    ]),
     reason: z.string().optional(),
     summary: z.string().optional(),
     /** What the model cited as proof, each with its tested locator candidates. */
     evidence: z.array(EvidenceTargetSchema).optional(),
     /** Texts equal to an input value on the final screen, each with tested candidates. */
-    identity: z.array(EvidenceTargetSchema.extend({ input: z.string() })).optional(),
+    identity: z.array(ReadbackTargetSchema).optional(),
   }),
   /** Which declared outputs were bound by an extract whose text parsed. */
   outputs_bound: z.record(z.string(), z.strictObject({ step: z.number().int() })),

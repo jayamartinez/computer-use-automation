@@ -15,6 +15,9 @@ export const FailureCategorySchema = z.enum([
   "outcome_unknown",
   "aborted_by_human",
   "escalation_timeout",
+  // Operational, outside anything the artifact or profile describes: the surface could not
+  // start or reach the entry URL, or the runtime threw.
+  "runtime_error",
 ]);
 export type FailureCategory = z.infer<typeof FailureCategorySchema>;
 
@@ -35,6 +38,7 @@ const TRANSIENT: Record<FailureCategory, boolean> = {
   outcome_unknown: true,
   aborted_by_human: false,
   escalation_timeout: true,
+  runtime_error: true,
 };
 
 /** `safeToRetry` tells a calling agent both that retrying cannot duplicate work and that it may help. */

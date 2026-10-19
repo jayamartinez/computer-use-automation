@@ -120,6 +120,13 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
   // valid in the epoch it ran in: a transfer of control may have changed the screen.
   const assertedIn = new Map<string, number>();
   const unattended = artifact.status === "approved" && options.allowIrreversible === true;
+  const LOGIN: StepRef = { id: "login", intent: "Sign in using the app profile" };
+  const CHECKPOINT: StepRef = {
+    id: "checkpoint",
+    intent: "Verify the capability's success checkpoint",
+  };
+  // Where the run is, so an operational error can name the step it interrupted.
+  let current: StepRef = LOGIN;
 
   const common = () => ({
     runId: options.runId,
@@ -140,7 +147,17 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
   };
 
   const fail = async (p: Problem): Promise<ReplayResult> => {
-    const evidence = p.screen ? await executor.captureEvidence(p.step.id) : undefined;
+    // Evidence is best effort: a browser that dies while it is captured must not cost the
+    // caller the failure itself, least of all its side-effect information.
+    let evidence: Awaited<ReturnType<typeof executor.captureEvidence>> | undefined;
+    if (p.screen) {
+      try {
+        evidence = await executor.captureEvidence(p.step.id);
+      } catch (error) {
+        const message = error instanceof Error ? error.message.split("\n")[0]! : String(error);
+        log.write("evidence_error", { stepId: p.step.id, message: log.scrubText(message) });
+      }
+    }
     const sideEffects = p.sideEffects ?? (irreversibleDispatched ? "possible" : "none");
     const failure: Failure = {
       category: p.category,
@@ -696,6 +713,7 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
   /** Runs every step once, from the authenticated shell. Returns why it stopped early, if it did. */
   const runSteps = async (): Promise<{ stop: Stop; step: Step } | undefined> => {
     for (const step of artifact.steps) {
+      current = step;
       let end = await attempt(step);
       for (
         let retry = 1;
@@ -714,72 +732,89 @@ export async function replay(options: ReplayOptions): Promise<ReplayResult> {
     return undefined;
   };
 
-  // A restart is bounded by the recovering condition's maxAttempts, so this loop ends.
-  for (;;) {
-    const login = await ensureAuthenticated(executor, profile, options.secrets);
-    if (!login.ok) {
-      return fail({
-        category: login.denied ? "policy_denied" : "unexpected_state",
-        step: { id: "login", intent: "Sign in using the app profile" },
-        expected: "The authenticated shell",
-        observed: login.reason,
-        screen: !login.denied,
-      });
-    }
-    const stopped = await runSteps();
-    if (!stopped) break;
-    const { stop, step } = stopped;
-    switch (stop.kind) {
-      case "restart":
-        log.write("restart", { stepId: step.id, condition: stop.condition });
-        outputs = {};
-        stepsCompleted = 0;
-        continue;
-      case "problem":
-        return fail(stop.problem);
-      case "outcome": {
-        const outcome = { code: stop.code, atStep: step.id };
-        log.write("run_end", { status: "business_outcome", outcome });
-        return { ...common(), status: "business_outcome", outcome };
+  // Every `return await fail(...)` below is awaited so that anything it throws reaches the catch.
+  try {
+    // A restart is bounded by the recovering condition's maxAttempts, so this loop ends.
+    for (;;) {
+      current = LOGIN;
+      const login = await ensureAuthenticated(executor, profile, options.secrets);
+      if (!login.ok) {
+        return await fail({
+          category: login.denied ? "policy_denied" : "unexpected_state",
+          step: LOGIN,
+          expected: "The authenticated shell",
+          observed: login.reason,
+          screen: !login.denied,
+        });
       }
-      default:
-        return stop satisfies never;
+      const stopped = await runSteps();
+      if (!stopped) break;
+      const { stop, step } = stopped;
+      switch (stop.kind) {
+        case "restart":
+          log.write("restart", { stepId: step.id, condition: stop.condition });
+          outputs = {};
+          stepsCompleted = 0;
+          continue;
+        case "problem":
+          return await fail(stop.problem);
+        case "outcome": {
+          const outcome = { code: stop.code, atStep: step.id };
+          log.write("run_end", { status: "business_outcome", outcome });
+          return { ...common(), status: "business_outcome", outcome };
+        }
+        default:
+          return stop satisfies never;
+      }
     }
-  }
 
-  const checkpoint: StepRef = {
-    id: "checkpoint",
-    intent: "Verify the capability's success checkpoint",
-  };
-  for (const predicate of artifact.checkpoint.all) {
-    const holds =
-      "outputParsed" in predicate
-        ? predicate.outputParsed in outputs
-        : await executor.waitFor(bind(predicate), CHECKPOINT_TIMEOUT_MS);
-    if (!holds) {
-      return fail({
-        category: "unexpected_state",
-        step: checkpoint,
-        expected: JSON.stringify(predicate),
-        observed: `The checkpoint predicate does not hold on the final screen${
-          "outputParsed" in predicate ? "" : await whyNot(bind(predicate))
-        }`,
-        screen: true,
-      });
+    current = CHECKPOINT;
+    for (const predicate of artifact.checkpoint.all) {
+      const holds =
+        "outputParsed" in predicate
+          ? predicate.outputParsed in outputs
+          : await executor.waitFor(bind(predicate), CHECKPOINT_TIMEOUT_MS);
+      if (!holds) {
+        return await fail({
+          category: "unexpected_state",
+          step: CHECKPOINT,
+          expected: JSON.stringify(predicate),
+          observed: `The checkpoint predicate does not hold on the final screen${
+            "outputParsed" in predicate ? "" : await whyNot(bind(predicate))
+          }`,
+          screen: true,
+        });
+      }
     }
-  }
-  log.write("checkpoint_ok");
+    log.write("checkpoint_ok");
 
-  log.write("run_end", {
-    status: "success",
-    outputs: Object.fromEntries(
-      Object.entries(outputs).map(([name, value]) => [
-        name,
-        redact(outputAsText(value), artifact.outputs[name]!.sensitivity),
-      ]),
-    ),
-  });
-  return { ...common(), status: "success", outputs };
+    log.write("run_end", {
+      status: "success",
+      outputs: Object.fromEntries(
+        Object.entries(outputs).map(([name, value]) => [
+          name,
+          redact(outputAsText(value), artifact.outputs[name]!.sensitivity),
+        ]),
+      ),
+    });
+    return { ...common(), status: "success", outputs };
+  } catch (error) {
+    // Anything thrown here is outside the taxonomy: a browser that died, a bug. It still ends
+    // in the result contract, judged by what was dispatched before it. The surface may be
+    // gone, so no evidence is captured; the log holds the steps up to this point.
+    const message = log.scrubText(
+      error instanceof Error ? error.message.split("\n")[0]! : String(error),
+    );
+    log.write("runtime_error", { stepId: current.id, message });
+    if (executor.irreversibleDispatched) irreversibleDispatched = true;
+    return fail({
+      category: "runtime_error",
+      step: current,
+      expected: "The run to proceed without an operational error",
+      observed: message,
+      screen: false,
+    });
+  }
 }
 
 function inputProblems(artifact: Artifact, inputs: Record<string, string>): string | undefined {

@@ -237,3 +237,28 @@ describe("policy preflight and redaction", () => {
     expect(redact("15902.66 USD", "financial")).toBe("[financial]");
   });
 });
+
+describe("guarded executor: control fencing", () => {
+  it("refuses to dispatch when control changes hands while the target is resolving", async () => {
+    const { executor, surface, control, lines } = setup();
+    const resolve = surface.resolve.bind(surface);
+    let calls = 0;
+    // The target is not there on the first poll; a person takes over before it appears.
+    surface.resolve = async (target) => {
+      calls += 1;
+      if (calls === 1) {
+        control.transfer("human");
+        return { kind: "none" };
+      }
+      return resolve(target);
+    };
+    const result = await executor.perform(
+      click({ risk: "irreversible", approved: true, timeoutMs: 1_000 }),
+    );
+    expect(result).toMatchObject({ status: "denied", rule: "control" });
+    expect(calls).toBeGreaterThan(1);
+    expect(surface.actions).toHaveLength(0);
+    expect(executor.irreversibleDispatched).toBe(false);
+    expect(lines.map((line) => JSON.parse(line).event)).toEqual(["action_denied"]);
+  });
+});

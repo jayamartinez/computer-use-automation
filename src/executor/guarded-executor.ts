@@ -50,10 +50,18 @@ export type ExecutorOptions = {
 
 /**
  * The only path to the surface. Checks run in a fixed order before anything is resolved or
- * dispatched: control ownership and epoch, action type, scope, risk.
+ * dispatched: control ownership and epoch, action type, scope, risk. Ownership is checked again
+ * once the target resolves, immediately before dispatch.
  */
 export class GuardedExecutor {
+  private dispatched = false;
+
   constructor(private readonly options: ExecutorOptions) {}
+
+  /** Whether any irreversible action has reached the surface through this executor. */
+  get irreversibleDispatched(): boolean {
+    return this.dispatched;
+  }
 
   get epoch(): number {
     return this.options.control.epoch;
@@ -71,11 +79,15 @@ export class GuardedExecutor {
       ...(request.value ? { value: request.value.logged } : {}),
     };
 
-    if (control.controller !== "automation" || request.epoch !== control.epoch) {
+    const fenced = (): ActionResult | undefined => {
+      if (control.controller === "automation" && request.epoch === control.epoch) return undefined;
       const reason = `Controller is "${control.controller}" at epoch ${control.epoch}; action was planned at epoch ${request.epoch}`;
       log.write("action_denied", { ...base, rule: "control", reason });
       return { status: "denied", rule: "control", reason };
-    }
+    };
+
+    const early = fenced();
+    if (early) return early;
     const decision = checkAction(policy, {
       action: request.action,
       scope: request.target.scope,
@@ -99,9 +111,15 @@ export class GuardedExecutor {
       return { status: "unresolved", kind: resolution.kind, count };
     }
 
+    // Resolution polls for up to the step timeout, and control can change hands meanwhile. The
+    // check that counts is the one with nothing awaited between it and the dispatch.
+    const late = fenced();
+    if (late) return late;
+
     // An irreversible action counts as dispatched from here on, before the surface acts: an
     // error while acting cannot prove that nothing was committed.
     if (request.risk === "irreversible") {
+      this.dispatched = true;
       log.write("dispatch_irreversible", { ...base, epoch: request.epoch });
     }
     try {

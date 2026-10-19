@@ -229,9 +229,16 @@ describe("handoff controller with a scripted person", () => {
     expect(t.control.controller).toBe("automation");
     expect(t.control.epoch).toBe(startEpoch + 2);
 
-    const denied = setup(answers("deny"));
-    expect(await denied.handoff.approval({ ...context, stepId: "confirm" })).toBe("deny");
-    expect(denied.handoff.state).toBe("FAILED");
+    // A deny gives control back: discovery tells the model and may need to ask again later.
+    const denied = setup(answers("deny", "approve"));
+    expect(await denied.handoff.approval({ ...context, stepId: "open_type" })).toBe("deny");
+    expect(denied.handoff.state).toBe("AUTOMATION_ACTIVE");
+    expect(denied.control.controller).toBe("automation");
+    expect(await denied.handoff.approval({ ...context, stepId: "confirm" })).toBe("approve");
+
+    const silent = setup(answers(undefined));
+    expect(await silent.handoff.approval({ ...context, stepId: "confirm" })).toBe("timeout");
+    expect(silent.handoff.state).toBe("FAILED");
   });
 
   it("passes an unknown-outcome verdict back with control", async () => {
