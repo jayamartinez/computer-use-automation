@@ -40,6 +40,13 @@ export const CapabilityRequestSchema = z
     probes: z
       .array(z.strictObject({ code: z.string(), inputs: z.record(z.string(), z.string()) }))
       .optional(),
+    /**
+     * Inputs the screen before an irreversible step does not show, so they cannot be read back
+     * before committing. Every other input must be, or the compiler refuses the trace. Declared
+     * here, by the person asking for the capability, so that skipping a check is a reviewed
+     * decision rather than something discovery happened not to see.
+     */
+    readbackExempt: z.array(z.string()).optional(),
     budget: z
       .strictObject({
         maxSteps: z.number().int().positive().default(25),
@@ -52,6 +59,15 @@ export const CapabilityRequestSchema = z
       .default({ maxSteps: 25, maxMs: 10 * 60_000 }),
   })
   .superRefine((request, ctx) => {
+    (request.readbackExempt ?? []).forEach((name, index) => {
+      if (!(name in request.inputs)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["readbackExempt", index],
+          message: `readbackExempt names "${name}", which is not a declared input`,
+        });
+      }
+    });
     for (const name of Object.keys(request.inputs)) {
       if (!(name in request.verifyInputs)) {
         ctx.addIssue({

@@ -1,0 +1,20 @@
+{"seq":1,"ts":"2026-10-19T15:01:06.188Z","event":"run_start","runId":"20261019T150106-192c9154","capability":"coreserv.member.lookup_balance","version":"1.1.0","contentHash":"sha256:45a860cf36313de3ef0b51e41e154b014f4e08264d413d17b8ce2e368f1340da","tenant":"lakeside","inputs":{"memberId":"***77"}}
+{"seq":2,"ts":"2026-10-19T15:01:06.234Z","event":"action","stepId":"login_1","intent":"Sign in (app profile)","action":"fill","target":"login.steps[0]","risk":"reversible","value":"{{secrets.operatorId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":22}
+{"seq":3,"ts":"2026-10-19T15:01:06.246Z","event":"action","stepId":"login_2","intent":"Sign in (app profile)","action":"fill","target":"login.steps[1]","risk":"reversible","value":"{{secrets.password}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":12}
+{"seq":4,"ts":"2026-10-19T15:01:06.299Z","event":"action","stepId":"login_3","intent":"Sign in (app profile)","action":"click","target":"login.steps[2]","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":53}
+{"seq":5,"ts":"2026-10-19T15:01:06.525Z","event":"action","stepId":"click_member_inquiry","intent":"Open Member Inquiry to look up member {{inputs.memberId}}.","action":"click","target":"member_inquiry_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":62}
+{"seq":6,"ts":"2026-10-19T15:01:06.685Z","event":"state","stepId":"click_member_inquiry","matched":"expected state","ms":160}
+{"seq":7,"ts":"2026-10-19T15:01:06.685Z","event":"step_ok","stepId":"click_member_inquiry"}
+{"seq":8,"ts":"2026-10-19T15:01:06.718Z","event":"action","stepId":"fill_member_number","intent":"Enter the member number to search.","action":"fill","target":"member_number_field","risk":"reversible","value":"{{inputs.memberId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":33}
+{"seq":9,"ts":"2026-10-19T15:01:06.739Z","event":"state","stepId":"fill_member_number","matched":"expected state","ms":21}
+{"seq":10,"ts":"2026-10-19T15:01:06.739Z","event":"step_ok","stepId":"fill_member_number"}
+{"seq":11,"ts":"2026-10-19T15:01:06.798Z","event":"action","stepId":"click_search","intent":"Member number is filled; run the search.","action":"click","target":"search_button","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":59}
+{"seq":12,"ts":"2026-10-19T15:01:06.948Z","event":"state","stepId":"click_search","matched":"expected state","ms":149}
+{"seq":13,"ts":"2026-10-19T15:01:06.948Z","event":"step_ok","stepId":"click_search"}
+{"seq":14,"ts":"2026-10-19T15:01:06.983Z","event":"action","stepId":"click_view","intent":"Open the member {{inputs.memberId}} record to find account balances.","action":"click","target":"view_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":35}
+{"seq":15,"ts":"2026-10-19T15:01:07.142Z","event":"state","stepId":"click_view","matched":"expected state","ms":159}
+{"seq":16,"ts":"2026-10-19T15:01:07.142Z","event":"step_ok","stepId":"click_view"}
+{"seq":17,"ts":"2026-10-19T15:01:07.163Z","event":"action","stepId":"extract_savings_balance","intent":"Savings row balance for member {{inputs.memberId}} is [masked].","action":"extract","target":"savings_balance_cell","risk":"read","policy":"extract:read","strategy":"table_cell","strategyIndex":0,"ms":21}
+{"seq":18,"ts":"2026-10-19T15:01:07.163Z","event":"step_ok","stepId":"extract_savings_balance"}
+{"seq":19,"ts":"2026-10-19T15:01:07.185Z","event":"checkpoint_ok"}
+{"seq":20,"ts":"2026-10-19T15:01:07.185Z","event":"run_end","status":"success","outputs":{"savingsBalance":"[financial]"}}

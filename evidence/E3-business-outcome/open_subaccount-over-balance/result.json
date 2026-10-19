@@ -1,0 +1,20 @@
+{
+  "runId": "20261019T150113-91b50729",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "1.1.0",
+    "contentHash": "sha256:5b75f0af1c229f7c4d1b8ddc4e9eae4272f7c7bdff41f7d23a2fbba7c0ca9d76"
+  },
+  "tenant": "lakeside",
+  "durationMs": 1502,
+  "stepsCompleted": 8,
+  "recoveries": [],
+  "interventions": [],
+  "warnings": [],
+  "log": "runs\\20261019T150113-91b50729\\run.jsonl",
+  "status": "business_outcome",
+  "outcome": {
+    "code": "INSUFFICIENT_FUNDS",
+    "atStep": "click_continue"
+  }
+}

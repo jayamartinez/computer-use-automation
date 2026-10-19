@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { maskObservation, matchesSignature, resolveTarget } from "../../src/surface/resolve.ts";
+import {
+  maskedElements,
+  maskObservation,
+  matchesSignature,
+  resolveTarget,
+} from "../../src/surface/resolve.ts";
 import type { Strategy, Target } from "../../src/surface/target.ts";
 import type { ObservedElement } from "../../src/surface/types.ts";
 
@@ -231,6 +236,27 @@ describe("signatures and masking", () => {
     expect(dump).not.toContain("4000-10077-01");
     expect(dump).toContain("Savings");
     expect(dump).toContain("Account No");
+  });
+
+  it("masks a column only as wide as its header cell, not a control further down", () => {
+    const accounts = [
+      el("cell", "Account No", 20, 115, 96, 23),
+      el("text", "Account No", 24, 119, 73, 15),
+      el("cell", "4000-10077-01", 20, 138, 96, 23),
+      el("text", "4000-10077-01", 24, 142, 88, 15),
+      // The Open Sub-Account button and its layout cell sit under the column, but are wider.
+      el("cell", "Open Sub-Account", 20, 193, 318, 37),
+      el("button", "Open Sub-Account", 20, 193, 129, 21),
+    ];
+    const masked = maskedElements(accounts, [{ label: "Account No", where: "below" }]);
+    expect(masked.map((e) => e.text)).toEqual(["4000-10077-01", "4000-10077-01"]);
+    const dump = JSON.stringify(
+      maskObservation({ id: "o", fingerprint: "f", elements: accounts }, [
+        { label: "Account No", where: "below" },
+      ]),
+    );
+    expect(dump).not.toContain("4000-10077-01");
+    expect(dump).toContain("Open Sub-Account");
   });
 
   it("applies a mask rule only on the screen its `when` names", () => {

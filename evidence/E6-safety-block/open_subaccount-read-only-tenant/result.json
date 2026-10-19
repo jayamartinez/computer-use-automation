@@ -1,0 +1,26 @@
+{
+  "runId": "20261019T150125-82ab4679",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "1.1.0",
+    "contentHash": "sha256:5b75f0af1c229f7c4d1b8ddc4e9eae4272f7c7bdff41f7d23a2fbba7c0ca9d76"
+  },
+  "tenant": "lakeside",
+  "durationMs": 2,
+  "stepsCompleted": 0,
+  "recoveries": [],
+  "interventions": [],
+  "warnings": [],
+  "log": "runs\\20261019T150125-82ab4679\\run.jsonl",
+  "status": "failure",
+  "failure": {
+    "category": "policy_denied",
+    "stepId": "preflight",
+    "intent": "Check the capability's requirements against tenant policy",
+    "expected": "Requirements within the tenant policy",
+    "observed": "Capability requires risk \"irreversible\" above the tenant maximum",
+    "sideEffects": "none",
+    "safeToRetry": false,
+    "outputsVerified": false
+  }
+}

@@ -1,0 +1,1105 @@
+{
+  "schemaVersion": 1,
+  "traceId": "20261019T151439-296c3ee5",
+  "capability": "coreserv.member.open_subaccount",
+  "goal": "Open a new sub-account for the member, funded from their Savings with the opening deposit, and read the new account number and the confirmation reference from the confirmation screen.",
+  "tenant": "lakeside",
+  "app": {
+    "product": "coreserv",
+    "version": "7.2"
+  },
+  "provider": "openrouter:anthropic/claude-haiku-5.5",
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "sensitivity": "identifier"
+    },
+    "accountType": {
+      "type": "enum",
+      "sensitivity": "none"
+    },
+    "nickname": {
+      "type": "string",
+      "sensitivity": "none"
+    },
+    "openingDeposit": {
+      "type": "money",
+      "sensitivity": "financial"
+    }
+  },
+  "outputs": {
+    "newAccountNumber": {
+      "type": "string",
+      "sensitivity": "account_number"
+    },
+    "confirmationRef": {
+      "type": "string",
+      "sensitivity": "none"
+    }
+  },
+  "startedAt": "2026-10-19T15:14:39.853Z",
+  "finishedAt": "2026-10-19T15:17:29.287Z",
+  "events": [
+    {
+      "seq": 1,
+      "actor": "automation",
+      "observation": {
+        "id": "4d51d9d7-ecfd-46fe-9f7b-8a9429566e99",
+        "fingerprint": "8622e8d90060cb81",
+        "screenshot": "screenshots/d1.png",
+        "dump": "observations/d1.json"
+      },
+      "decision": {
+        "ref": "e7",
+        "rationale": "Need member inquiry to locate member {{inputs.memberId}} and open account functions.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e7",
+          "rationale": "Need member inquiry to locate member {{inputs.memberId}} and open account functions."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 3909,
+          "completionTokens": 90,
+          "cost": 0.0004359
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "link",
+        "scope": [
+          "nav"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "Member Inquiry",
+            "unique": true
+          },
+          {
+            "kind": "anchor",
+            "text": "Main Menu",
+            "relation": "below",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "c36e4b14a646301f",
+        "settleMs": 319
+      }
+    },
+    {
+      "seq": 2,
+      "actor": "automation",
+      "observation": {
+        "id": "cbfc71a7-8cbb-4cfe-b120-7279c2af26f7",
+        "fingerprint": "c36e4b14a646301f",
+        "screenshot": "screenshots/d2.png",
+        "dump": "observations/d2.json"
+      },
+      "decision": {
+        "ref": "e16",
+        "value": {
+          "input": "memberId"
+        },
+        "rationale": "Enter the member number to search.",
+        "action": "fill"
+      },
+      "raw": {
+        "toolName": "fill",
+        "arguments": {
+          "ref": "e16",
+          "value": {
+            "input": "memberId"
+          },
+          "rationale": "Enter the member number to search."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 3972,
+          "completionTokens": 109,
+          "cost": 0.0004517
+        }
+      },
+      "policy": {
+        "risk": "reversible",
+        "rule": "fill:reversible",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "textbox",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Member Number",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "c36e4b14a646301f",
+        "settleMs": 0
+      }
+    },
+    {
+      "seq": 3,
+      "actor": "automation",
+      "observation": {
+        "id": "cea11b18-9b3b-4061-9460-509e5050c641",
+        "fingerprint": "c36e4b14a646301f",
+        "screenshot": "screenshots/d3.png",
+        "dump": "observations/d3.json"
+      },
+      "decision": {
+        "ref": "e14",
+        "rationale": "Search for member {{inputs.memberId}} to open their record.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e14",
+          "rationale": "Search for member {{inputs.memberId}} to open their record."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4003,
+          "completionTokens": 82,
+          "cost": 0.0004413
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "button",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "Search",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "24404a588a5af8d0",
+        "settleMs": 315
+      }
+    },
+    {
+      "seq": 4,
+      "actor": "automation",
+      "observation": {
+        "id": "0c682509-31cb-4df0-8df3-d4a1e445f544",
+        "fingerprint": "24404a588a5af8d0",
+        "screenshot": "screenshots/d4.png",
+        "dump": "observations/d4.json"
+      },
+      "decision": {
+        "ref": "e14",
+        "rationale": "Open the member {{inputs.memberId}} record to find account opening options.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e14",
+          "rationale": "Open the member {{inputs.memberId}} record to find account opening options."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4060,
+          "completionTokens": 85,
+          "cost": 0.0004485
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "link",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "View",
+            "unique": true
+          },
+          {
+            "kind": "table_cell",
+            "headers": [
+              "Member No",
+              "Action"
+            ],
+            "row": {
+              "column": "Member No",
+              "equals": "{{inputs.memberId}}"
+            },
+            "column": "Action",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "376cbc6cee80cded",
+        "settleMs": 320
+      }
+    },
+    {
+      "seq": 5,
+      "actor": "automation",
+      "observation": {
+        "id": "636b4d24-80c3-4bfe-b5c5-830848aaa73a",
+        "fingerprint": "376cbc6cee80cded",
+        "screenshot": "screenshots/d5.png",
+        "dump": "observations/d5.json"
+      },
+      "decision": {
+        "ref": "e14",
+        "rationale": "Member {{inputs.memberId}} profile is shown; open the sub-account form.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e14",
+          "rationale": "Member {{inputs.memberId}} profile is shown; open the sub-account form."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4359,
+          "completionTokens": 89,
+          "cost": 0.0004804
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "button",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "Open Sub-Account",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "096a3b689f1e7de7",
+        "settleMs": 322
+      }
+    },
+    {
+      "seq": 6,
+      "actor": "automation",
+      "observation": {
+        "id": "95a2aabc-c08e-4d02-a63e-1c827cb99ed8",
+        "fingerprint": "096a3b689f1e7de7",
+        "screenshot": "screenshots/d6.png",
+        "dump": "observations/d6.json"
+      },
+      "decision": {
+        "ref": "e16",
+        "value": {
+          "input": "nickname"
+        },
+        "rationale": "Enter the sub-account nickname.",
+        "action": "fill"
+      },
+      "raw": {
+        "toolName": "fill",
+        "arguments": {
+          "ref": "e16",
+          "value": {
+            "input": "nickname"
+          },
+          "rationale": "Enter the sub-account nickname."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4524,
+          "completionTokens": 330,
+          "cost": 0.0006174
+        }
+      },
+      "policy": {
+        "risk": "reversible",
+        "rule": "fill:reversible",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "textbox",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Nickname *",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "096a3b689f1e7de7",
+        "settleMs": 0
+      }
+    },
+    {
+      "seq": 7,
+      "actor": "automation",
+      "observation": {
+        "id": "866168ab-9842-450c-ae39-8d005bd85bc6",
+        "fingerprint": "096a3b689f1e7de7",
+        "screenshot": "screenshots/d7.png",
+        "dump": "observations/d7.json"
+      },
+      "decision": {
+        "ref": "e17",
+        "value": {
+          "input": "openingDeposit"
+        },
+        "rationale": "Enter the opening deposit amount.",
+        "action": "fill"
+      },
+      "raw": {
+        "toolName": "fill",
+        "arguments": {
+          "ref": "e17",
+          "value": {
+            "input": "openingDeposit"
+          },
+          "rationale": "Enter the opening deposit amount."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4559,
+          "completionTokens": 222,
+          "cost": 0.0005669
+        }
+      },
+      "policy": {
+        "risk": "reversible",
+        "rule": "fill:reversible",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "textbox",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Opening Deposit *",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "096a3b689f1e7de7",
+        "settleMs": 0
+      }
+    },
+    {
+      "seq": 8,
+      "actor": "automation",
+      "observation": {
+        "id": "9a15872f-ba9e-4294-9592-446c38d708a6",
+        "fingerprint": "096a3b689f1e7de7",
+        "screenshot": "screenshots/d8.png",
+        "dump": "observations/d8.json"
+      },
+      "decision": {
+        "ref": "e18",
+        "option": {
+          "input": "accountType"
+        },
+        "rationale": "Set the account type to {{inputs.accountType}} before continuing.",
+        "action": "select"
+      },
+      "raw": {
+        "toolName": "select",
+        "arguments": {
+          "ref": "e18",
+          "option": {
+            "input": "accountType"
+          },
+          "rationale": "Set the account type to {{inputs.accountType}} before continuing."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4595,
+          "completionTokens": 140,
+          "cost": 0.0005295
+        }
+      },
+      "policy": {
+        "risk": "reversible",
+        "rule": "select:reversible",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "combobox",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Account Type *",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "096a3b689f1e7de7",
+        "settleMs": 0
+      }
+    },
+    {
+      "seq": 9,
+      "actor": "automation",
+      "observation": {
+        "id": "5b264e00-be7f-497d-87ad-c9c032dd9fe1",
+        "fingerprint": "096a3b689f1e7de7",
+        "screenshot": "screenshots/d9.png",
+        "dump": "observations/d9.json"
+      },
+      "decision": {
+        "ref": "e14",
+        "rationale": "Form is filled with the requested values; submit with Continue to proceed to confirmation.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e14",
+          "rationale": "Form is filled with the requested values; submit with Continue to proceed to confirmation."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4622,
+          "completionTokens": 96,
+          "cost": 0.0005102
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "safe_control",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "button",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "Continue",
+            "unique": true
+          },
+          {
+            "kind": "anchor",
+            "text": "Savings",
+            "relation": "below",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "postFingerprint": "01ff19f3ceed0ab9",
+        "settleMs": 307
+      }
+    },
+    {
+      "seq": 10,
+      "actor": "automation",
+      "observation": {
+        "id": "25d466e3-fa98-44ec-910c-1fbce02dcd65",
+        "fingerprint": "01ff19f3ceed0ab9",
+        "screenshot": "screenshots/d10.png",
+        "dump": "observations/d10.json"
+      },
+      "decision": {
+        "action": "condition",
+        "condition": "supervisor_override",
+        "disposition": "escalate"
+      },
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "seq": 11,
+      "actor": "human",
+      "observation": {
+        "id": "25d466e3-fa98-44ec-910c-1fbce02dcd65",
+        "fingerprint": "01ff19f3ceed0ab9",
+        "screenshot": "screenshots/d10.png",
+        "dump": "observations/d10.json"
+      },
+      "decision": {
+        "action": "human",
+        "kind": "click",
+        "role": "textbox",
+        "name": "Supervisor ID",
+        "scope": [
+          "workarea"
+        ]
+      },
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "seq": 12,
+      "actor": "human",
+      "observation": {
+        "id": "25d466e3-fa98-44ec-910c-1fbce02dcd65",
+        "fingerprint": "01ff19f3ceed0ab9",
+        "screenshot": "screenshots/d10.png",
+        "dump": "observations/d10.json"
+      },
+      "decision": {
+        "action": "human",
+        "kind": "change",
+        "role": "textbox",
+        "name": "Supervisor ID",
+        "scope": [
+          "workarea"
+        ]
+      },
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "seq": 13,
+      "actor": "human",
+      "observation": {
+        "id": "25d466e3-fa98-44ec-910c-1fbce02dcd65",
+        "fingerprint": "01ff19f3ceed0ab9",
+        "screenshot": "screenshots/d10.png",
+        "dump": "observations/d10.json"
+      },
+      "decision": {
+        "action": "human",
+        "kind": "click",
+        "role": "textbox",
+        "name": "Override Code",
+        "scope": [
+          "workarea"
+        ]
+      },
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "seq": 14,
+      "actor": "human",
+      "observation": {
+        "id": "25d466e3-fa98-44ec-910c-1fbce02dcd65",
+        "fingerprint": "01ff19f3ceed0ab9",
+        "screenshot": "screenshots/d10.png",
+        "dump": "observations/d10.json"
+      },
+      "decision": {
+        "action": "human",
+        "kind": "change",
+        "role": "textbox",
+        "name": "Override Code",
+        "scope": [
+          "workarea"
+        ]
+      },
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "seq": 15,
+      "actor": "human",
+      "observation": {
+        "id": "25d466e3-fa98-44ec-910c-1fbce02dcd65",
+        "fingerprint": "01ff19f3ceed0ab9",
+        "screenshot": "screenshots/d10.png",
+        "dump": "observations/d10.json"
+      },
+      "decision": {
+        "action": "human",
+        "kind": "click",
+        "role": "button",
+        "name": "Authorize",
+        "scope": [
+          "workarea"
+        ]
+      },
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "seq": 16,
+      "actor": "automation",
+      "observation": {
+        "id": "1cab7fe8-7878-46dd-9574-0cb442385385",
+        "fingerprint": "e023b34af7a742c3",
+        "screenshot": "screenshots/d16.png",
+        "dump": "observations/d16.json"
+      },
+      "decision": {
+        "ref": "e14",
+        "rationale": "Review matches the inputs and the supervisor override is approved, so confirm the opening.",
+        "action": "click"
+      },
+      "raw": {
+        "toolName": "click",
+        "arguments": {
+          "ref": "e14",
+          "rationale": "Review matches the inputs and the supervisor override is approved, so confirm the opening."
+        },
+        "text": "The review screen matches the inputs: member {{inputs.memberId}}, {{inputs.accountType}}, \"{{inputs.nickname}}\", [masked] funded from Savings, with the supervisor override already approved by the person who took over. I'll confirm to open the account.",
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4590,
+          "completionTokens": 287,
+          "cost": 0.0006025
+        }
+      },
+      "policy": {
+        "risk": "irreversible",
+        "rule": "commit_control",
+        "decision": "approved"
+      },
+      "target": {
+        "role": "button",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "role_name",
+            "name": "Confirm",
+            "unique": true
+          },
+          {
+            "kind": "anchor",
+            "text": "Supervisor Override",
+            "relation": "below",
+            "unique": false
+          }
+        ]
+      },
+      "readback": [
+        {
+          "ref": "e20",
+          "role": "cell",
+          "scope": [
+            "workarea"
+          ],
+          "candidates": [
+            {
+              "kind": "anchor",
+              "text": "Member No",
+              "relation": "right_of",
+              "unique": true
+            }
+          ],
+          "input": "memberId"
+        },
+        {
+          "ref": "e26",
+          "role": "cell",
+          "scope": [
+            "workarea"
+          ],
+          "candidates": [
+            {
+              "kind": "anchor",
+              "text": "Account Type",
+              "relation": "right_of",
+              "unique": true
+            }
+          ],
+          "input": "accountType"
+        },
+        {
+          "ref": "e28",
+          "role": "cell",
+          "scope": [
+            "workarea"
+          ],
+          "candidates": [
+            {
+              "kind": "anchor",
+              "text": "Nickname",
+              "relation": "right_of",
+              "unique": true
+            }
+          ],
+          "input": "nickname"
+        },
+        {
+          "ref": "e30",
+          "role": "cell",
+          "scope": [
+            "workarea"
+          ],
+          "candidates": [
+            {
+              "kind": "anchor",
+              "text": "Opening Deposit",
+              "relation": "right_of",
+              "unique": true
+            }
+          ],
+          "input": "openingDeposit"
+        }
+      ],
+      "result": {
+        "status": "ok",
+        "postFingerprint": "287ca4d7eb20f4d3",
+        "settleMs": 321
+      }
+    },
+    {
+      "seq": 17,
+      "actor": "automation",
+      "observation": {
+        "id": "39bca413-0a93-4722-859b-c35a64ea8d67",
+        "fingerprint": "287ca4d7eb20f4d3",
+        "screenshot": "screenshots/d17.png",
+        "dump": "observations/d17.json"
+      },
+      "decision": {
+        "ref": "e20",
+        "output": "newAccountNumber",
+        "rationale": "The confirmation screen shows the new account number for member {{inputs.memberId}}.",
+        "action": "extract"
+      },
+      "raw": {
+        "toolName": "extract",
+        "arguments": {
+          "ref": "e20",
+          "output": "newAccountNumber",
+          "rationale": "The confirmation screen shows the new account number for member {{inputs.memberId}}."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4574,
+          "completionTokens": 312,
+          "cost": 0.0006134
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "extract:read",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "New Account No",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "extracted": {
+          "output": "newAccountNumber",
+          "parsed": true
+        }
+      }
+    },
+    {
+      "seq": 18,
+      "actor": "automation",
+      "observation": {
+        "id": "5916477e-d7af-4694-bf40-8f0cd6ca82ca",
+        "fingerprint": "287ca4d7eb20f4d3",
+        "screenshot": "screenshots/d18.png",
+        "dump": "observations/d18.json"
+      },
+      "decision": {
+        "ref": "e30",
+        "output": "confirmationRef",
+        "rationale": "The confirmation screen shows the Confirmation Ref value, the last remaining declared output.",
+        "action": "extract"
+      },
+      "raw": {
+        "toolName": "extract",
+        "arguments": {
+          "ref": "e30",
+          "output": "confirmationRef",
+          "rationale": "The confirmation screen shows the Confirmation Ref value, the last remaining declared output."
+        },
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4600,
+          "completionTokens": 166,
+          "cost": 0.000543
+        }
+      },
+      "policy": {
+        "risk": "read",
+        "rule": "extract:read",
+        "decision": "allow"
+      },
+      "target": {
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Confirmation Ref",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      "result": {
+        "status": "ok",
+        "extracted": {
+          "output": "confirmationRef",
+          "parsed": true
+        }
+      }
+    },
+    {
+      "seq": 19,
+      "actor": "automation",
+      "observation": {
+        "id": "2379b949-875c-44d9-b160-03ee96e0c76a",
+        "fingerprint": "287ca4d7eb20f4d3",
+        "screenshot": "screenshots/d19.png",
+        "dump": "observations/d19.json"
+      },
+      "decision": {
+        "summary": "Opened a {{inputs.accountType}} sub-account \"{{inputs.nickname}}\" for member {{inputs.memberId}} funded from Savings with a [masked] opening deposit; new account number [masked] and confirmation reference OSA-7697-7097 were read from the confirmation screen.",
+        "evidenceRefs": [
+          "e18",
+          "e20",
+          "e30",
+          "e34"
+        ],
+        "rationale": "All declared outputs were extracted and the confirmation receipt for member {{inputs.memberId}} is showing.",
+        "action": "finish"
+      },
+      "raw": {
+        "toolName": "finish",
+        "arguments": {
+          "summary": "Opened a {{inputs.accountType}} sub-account \"{{inputs.nickname}}\" for member {{inputs.memberId}} funded from Savings with a [masked] opening deposit; new account number [masked] and confirmation reference OSA-7697-7097 were read from the confirmation screen.",
+          "evidenceRefs": [
+            "e18",
+            "e20",
+            "e30",
+            "e34"
+          ],
+          "rationale": "All declared outputs were extracted and the confirmation receipt for member {{inputs.memberId}} is showing."
+        },
+        "text": "Both outputs were already extracted from the confirmation screen, and the screen shows they belong to member {{inputs.memberId}}.",
+        "model": "anthropic/claude-haiku-5.5",
+        "usage": {
+          "promptTokens": 4599,
+          "completionTokens": 330,
+          "cost": 0.0006249
+        }
+      },
+      "result": {
+        "status": "finished"
+      }
+    }
+  ],
+  "end": {
+    "kind": "finish",
+    "summary": "Opened a {{inputs.accountType}} sub-account \"{{inputs.nickname}}\" for member {{inputs.memberId}} funded from Savings with a [masked] opening deposit; new account number [masked] and confirmation reference OSA-7697-7097 were read from the confirmation screen.",
+    "evidence": [
+      {
+        "ref": "e18",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Member No",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      {
+        "ref": "e20",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "New Account No",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      {
+        "ref": "e30",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Confirmation Ref",
+            "relation": "right_of",
+            "unique": true
+          }
+        ]
+      },
+      {
+        "ref": "e34",
+        "role": "text",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Sub-Account Confirmation",
+            "relation": "below",
+            "unique": true
+          }
+        ]
+      }
+    ],
+    "identity": [
+      {
+        "ref": "e18",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Member No",
+            "relation": "right_of",
+            "unique": true
+          }
+        ],
+        "input": "memberId"
+      },
+      {
+        "ref": "e22",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Account Type",
+            "relation": "right_of",
+            "unique": true
+          }
+        ],
+        "input": "accountType"
+      },
+      {
+        "ref": "e24",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Nickname",
+            "relation": "right_of",
+            "unique": true
+          }
+        ],
+        "input": "nickname"
+      },
+      {
+        "ref": "e26",
+        "role": "cell",
+        "scope": [
+          "workarea"
+        ],
+        "candidates": [
+          {
+            "kind": "anchor",
+            "text": "Opening Deposit",
+            "relation": "right_of",
+            "unique": true
+          }
+        ],
+        "input": "openingDeposit"
+      }
+    ]
+  },
+  "outputs_bound": {
+    "newAccountNumber": {
+      "step": 17
+    },
+    "confirmationRef": {
+      "step": 18
+    }
+  },
+  "cost": 0.0068656
+}

@@ -1,0 +1,786 @@
+{
+  "id": "c5f02a80-9335-498f-a7f7-c574998d6cb0",
+  "elements": [
+    {
+      "ref": "e1",
+      "scope": [
+        "banner"
+      ],
+      "role": "cell",
+      "name": "CoreServ 7.2 Lakeside CU",
+      "text": "CoreServ 7.2 Lakeside CU",
+      "bounds": {
+        "x": 8,
+        "y": 8,
+        "width": 778.703125,
+        "height": 19
+      }
+    },
+    {
+      "ref": "e2",
+      "scope": [
+        "banner"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 786.703125,
+        "y": 8,
+        "width": 485.296875,
+        "height": 19
+      }
+    },
+    {
+      "ref": "e3",
+      "scope": [
+        "banner"
+      ],
+      "role": "text",
+      "name": "Lakeside CU",
+      "text": "Lakeside CU",
+      "bounds": {
+        "x": 10,
+        "y": 10,
+        "width": 164.765625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e4",
+      "scope": [
+        "banner"
+      ],
+      "role": "text",
+      "name": "CoreServ 7.2",
+      "text": "CoreServ 7.2",
+      "bounds": {
+        "x": 10,
+        "y": 10,
+        "width": 79.5,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e5",
+      "scope": [
+        "banner"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 1168.828125,
+        "y": 10,
+        "width": 101.171875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e6",
+      "scope": [
+        "nav"
+      ],
+      "role": "link",
+      "name": "Main Menu",
+      "text": "Main Menu",
+      "bounds": {
+        "x": 12,
+        "y": 35,
+        "width": 64.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e7",
+      "scope": [
+        "nav"
+      ],
+      "role": "link",
+      "name": "Member Inquiry",
+      "text": "Member Inquiry",
+      "bounds": {
+        "x": 12,
+        "y": 58,
+        "width": 90.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e8",
+      "scope": [
+        "nav"
+      ],
+      "role": "cell",
+      "name": "Functions",
+      "text": "Functions",
+      "bounds": {
+        "x": 8,
+        "y": 8,
+        "width": 98.3125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e9",
+      "scope": [
+        "nav"
+      ],
+      "role": "cell",
+      "name": "Main Menu",
+      "text": "Main Menu",
+      "bounds": {
+        "x": 8,
+        "y": 31,
+        "width": 98.3125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e10",
+      "scope": [
+        "nav"
+      ],
+      "role": "cell",
+      "name": "Member Inquiry",
+      "text": "Member Inquiry",
+      "bounds": {
+        "x": 8,
+        "y": 54,
+        "width": 98.3125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e11",
+      "scope": [
+        "nav"
+      ],
+      "role": "text",
+      "name": "Functions",
+      "text": "Functions",
+      "bounds": {
+        "x": 12,
+        "y": 12,
+        "width": 62.109375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e12",
+      "scope": [
+        "nav"
+      ],
+      "role": "text",
+      "name": "Main Menu",
+      "text": "Main Menu",
+      "bounds": {
+        "x": 12,
+        "y": 35,
+        "width": 64.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e13",
+      "scope": [
+        "nav"
+      ],
+      "role": "text",
+      "name": "Member Inquiry",
+      "text": "Member Inquiry",
+      "bounds": {
+        "x": 12,
+        "y": 58,
+        "width": 90.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e14",
+      "scope": [
+        "workarea"
+      ],
+      "role": "button",
+      "name": "Return to Member Profile",
+      "text": "Return to Member Profile",
+      "bounds": {
+        "x": 12,
+        "y": 302,
+        "width": 164.921875,
+        "height": 21
+      }
+    },
+    {
+      "ref": "e15",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Sub-Account Confirmation",
+      "text": "Sub-Account Confirmation",
+      "bounds": {
+        "x": 8,
+        "y": 8,
+        "width": 1093,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e16",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 8,
+        "y": 31,
+        "width": 1093,
+        "height": 312
+      }
+    },
+    {
+      "ref": "e17",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Member No",
+      "text": "Member No",
+      "bounds": {
+        "x": 13,
+        "y": 99,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e18",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 184.96875,
+        "y": 99,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e19",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "New Account No",
+      "text": "New Account No",
+      "bounds": {
+        "x": 13,
+        "y": 122,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e20",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 184.96875,
+        "y": 122,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e21",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Account Type",
+      "text": "Account Type",
+      "bounds": {
+        "x": 13,
+        "y": 145,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e22",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "{{inputs.accountType}}",
+      "text": "{{inputs.accountType}}",
+      "bounds": {
+        "x": 184.96875,
+        "y": 145,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e23",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Nickname",
+      "text": "Nickname",
+      "bounds": {
+        "x": 13,
+        "y": 168,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e24",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "{{inputs.nickname}}",
+      "text": "{{inputs.nickname}}",
+      "bounds": {
+        "x": 184.96875,
+        "y": 168,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e25",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Opening Deposit",
+      "text": "Opening Deposit",
+      "bounds": {
+        "x": 13,
+        "y": 191,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e26",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 184.96875,
+        "y": 191,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e27",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Funded From",
+      "text": "Funded From",
+      "bounds": {
+        "x": 13,
+        "y": 214,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e28",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Savings",
+      "text": "Savings",
+      "bounds": {
+        "x": 184.96875,
+        "y": 214,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e29",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Confirmation Ref",
+      "text": "Confirmation Ref",
+      "bounds": {
+        "x": 13,
+        "y": 237,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e30",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "OSA-7697-7097",
+      "text": "OSA-7697-7097",
+      "bounds": {
+        "x": 184.96875,
+        "y": 237,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e31",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Posted",
+      "text": "Posted",
+      "bounds": {
+        "x": 13,
+        "y": 260,
+        "width": 171.96875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e32",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "10/19/2026 11:17 AM",
+      "text": "10/19/2026 11:17 AM",
+      "bounds": {
+        "x": 184.96875,
+        "y": 260,
+        "width": 198.03125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e33",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Sub-Account Confirmation",
+      "text": "Sub-Account Confirmation",
+      "bounds": {
+        "x": 12,
+        "y": 12,
+        "width": 165.390625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e34",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Sub-account opened.",
+      "text": "Sub-account opened.",
+      "bounds": {
+        "x": 12,
+        "y": 35,
+        "width": 132.171875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e35",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "The opening deposit has been posted. Give the member the confirmation reference below.",
+      "text": "The opening deposit has been posted. Give the member the confirmation reference below.",
+      "bounds": {
+        "x": 12,
+        "y": 50,
+        "width": 519.59375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e36",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Transaction Receipt",
+      "text": "Transaction Receipt",
+      "bounds": {
+        "x": 12,
+        "y": 83,
+        "width": 123.546875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e37",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Member No",
+      "text": "Member No",
+      "bounds": {
+        "x": 17,
+        "y": 103,
+        "width": 70.796875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e38",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 188.96875,
+        "y": 103,
+        "width": 36.15625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e39",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "New Account No",
+      "text": "New Account No",
+      "bounds": {
+        "x": 17,
+        "y": 126,
+        "width": 102.8125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e40",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 188.96875,
+        "y": 126,
+        "width": 88.203125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e41",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Account Type",
+      "text": "Account Type",
+      "bounds": {
+        "x": 17,
+        "y": 149,
+        "width": 85,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e42",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "{{inputs.accountType}}",
+      "text": "{{inputs.accountType}}",
+      "bounds": {
+        "x": 188.96875,
+        "y": 149,
+        "width": 82.375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e43",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Nickname",
+      "text": "Nickname",
+      "bounds": {
+        "x": 17,
+        "y": 172,
+        "width": 61.421875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e44",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "{{inputs.nickname}}",
+      "text": "{{inputs.nickname}}",
+      "bounds": {
+        "x": 188.96875,
+        "y": 172,
+        "width": 59.96875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e45",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Opening Deposit",
+      "text": "Opening Deposit",
+      "bounds": {
+        "x": 17,
+        "y": 195,
+        "width": 104,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e46",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 188.96875,
+        "y": 195,
+        "width": 57.84375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e47",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Funded From",
+      "text": "Funded From",
+      "bounds": {
+        "x": 17,
+        "y": 218,
+        "width": 83.046875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e48",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Savings",
+      "text": "Savings",
+      "bounds": {
+        "x": 188.96875,
+        "y": 218,
+        "width": 46.25,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e49",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Confirmation Ref",
+      "text": "Confirmation Ref",
+      "bounds": {
+        "x": 17,
+        "y": 241,
+        "width": 105.453125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e50",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "OSA-7697-7097",
+      "text": "OSA-7697-7097",
+      "bounds": {
+        "x": 188.96875,
+        "y": 241,
+        "width": 93.953125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e51",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Posted",
+      "text": "Posted",
+      "bounds": {
+        "x": 17,
+        "y": 264,
+        "width": 43.34375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e52",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "10/19/2026 11:17 AM",
+      "text": "10/19/2026 11:17 AM",
+      "bounds": {
+        "x": 188.96875,
+        "y": 264,
+        "width": 122.640625,
+        "height": 15
+      }
+    }
+  ],
+  "fingerprint": "287ca4d7eb20f4d3"
+}

@@ -136,6 +136,9 @@ describe("saved evidence masking on every CoreServ screen", () => {
     expect(dumps.confirmation).toContain("Certificate");
     expect(dumps.confirmation).toMatch(/OSA-\d{4}-\d{4}/);
     expect(dumps.review).toContain("Opening Deposit");
+    // The button under the Accounts table is not in the Account No column: masking it put its
+    // name on discovery's scrub list, which erased it from the trace.
+    expect(dumps.profile).toContain('"name":"Open Sub-Account"');
   });
 
   it("masks the operator id in screenshots as well as in dumps", async () => {

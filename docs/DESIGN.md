@@ -113,7 +113,7 @@ interface Surface {
 - **Scope.** Each target and signature names a scope: an ordered path of named containers, matched exactly. The surface defines the names: on `PlaywrightSurface` it is the path of frame names below the top document (`["workarea"]`); on a single-document page it is `[]`; a desktop surface would use window then pane. A surface must give each container a stable name. `PlaywrightSurface` uses the frame's `name`, so an unnamed iframe is a known gap.
 - **Native dialogs are a container named `dialog`.** While an `alert`/`confirm`/`prompt` is open, the observation holds only the dialog, as an operator sees it: its message as text and its buttons (`OK`, plus `Cancel` for confirm and prompt) as buttons, all in scope `["dialog"]`. Clicking `OK` accepts it and `Cancel` dismisses it. Existing targets, signatures and profile handlers therefore work unchanged, and a desktop modal window would map the same way. A surface never answers a dialog by itself; one that matches no profile condition is an `unexpected_state`.
 - **Handoff seam.** `watchHuman(listener)` starts reporting what a person does on the surface (role, name and scope of the control; never a typed value) and returns a function that stops it. A surface whose session has gone (window closed) throws `SurfaceClosedError`.
-- `PlaywrightSurface` builds observations from per-frame accessibility snapshots plus bounding boxes, and resolves `anchor` and `table_cell` geometrically.
+- `PlaywrightSurface` builds each observation from every frame in `page.frames()`. Elements are found per frame by role (`getByRole`) and read in the page with their bounding boxes; visible text is read per element from its own text nodes, also with bounds. `anchor` and `table_cell` are resolved geometrically in `src/surface/resolve.ts` from those bounds, so the same resolution serves any surface that reports role, text and bounds.
 - `FakeSurface` is an in-memory state machine used to test the interpreter, executor and handoff without a browser.
 
 ## 4. Artifact schema
@@ -253,6 +253,7 @@ Per step:
 | Irreversible step dispatched, result undetermined | escalate | `unknown_outcome` request |
 | `password_expiry_alert` (native dialog) | recover | click OK in scope `dialog`, re-wait for `expect` |
 | Any other native dialog | fail | nothing matches, so `failure: unexpected_state`; never accepted blindly |
+| Browser fails to start, entry URL does not load, or the runtime throws | fail | `failure: runtime_error` |
 
 ### Irreversible steps
 
@@ -265,6 +266,8 @@ Per step:
 
 Recoveries are bounded (default two attempts per condition per run); exceeding the bound is `recovery_exhausted`. A step's `retry` budget covers only failures from the step itself; a disposition's decision is final.
 
+`runtime_error` covers what neither the artifact nor the profile describes: the session could not open, or something threw. It still ends in the result contract and writes `result.json`. `sideEffects` is `possible` if an irreversible step was already dispatched, otherwise `none`. A failure at launch has `stepId: "launch"`; one mid-run names the current step and captures no screen, since the surface may be gone.
+
 `safeToRetry` is true only when nothing can have been committed and the category is not fixed by the inputs, the policy, the artifact or a human (`src/outcome/result.ts`).
 
 ### Result contract
@@ -276,7 +279,7 @@ type ReplayResult = Common & (
   | { status: "failure"; failure: {
         category: "invalid_input" | "policy_denied" | "target_unresolved" | "target_ambiguous"
                 | "unexpected_state" | "app_error" | "extraction_invalid" | "recovery_exhausted"
-                | "outcome_unknown" | "aborted_by_human" | "escalation_timeout";
+                | "outcome_unknown" | "aborted_by_human" | "escalation_timeout" | "runtime_error";
         stepId: string; intent: string;
         expected: string; observed: string;        // observed is masked
         sideEffects: "none" | "possible" | "committed";
@@ -309,15 +312,28 @@ type Common = {
   "inputs":  { "memberId": { "type": "string", "pattern": "^\\d{5}$", "value": "10042" } },
   "outputs": { "savingsBalance": { "type": "money", "currency": "USD" } },
   "verifyInputs": { "memberId": "10077" },
-  "probes": [ { "code": "MEMBER_NOT_FOUND", "inputs": { "memberId": "99999" } } ]   // secondary scope
+  "probes": [ { "code": "MEMBER_NOT_FOUND", "inputs": { "memberId": "99999" } } ],  // secondary scope
+  "readbackExempt": []           // optional: inputs the commit screen does not show
 }
 ```
+
+`readbackExempt` names inputs that cannot be read back before an irreversible step because the screen before it does not show them. Each name must be a declared input. Every other input must be read back (§7). The exemption sits in the request so that skipping a check is a reviewed decision.
 
 **Loop.** Log in via the profile, then repeat: observe; handle any profile condition; ask the model for one action; classify risk by policy; run it through the guarded executor; record a trace event.
 
 **Model action vocabulary:** `click`, `fill`, `select`, `extract`, `finish`, `need_human`, `give_up`. Values are references (`{"input": "memberId"}`) or flagged literals. There is no `navigate` action; the harness opens the entry point.
 
 **Stopping and stuck detection (all deterministic):** step budget; wall-clock budget; the same action on an unchanged observation fingerprint three times; repeated policy denials; the model's own `need_human` or `give_up`. Stuck raises a takeover request rather than failing outright.
+
+**After a takeover.** Discovery re-reads the screen. If a profile condition that is not `recover` still shows, the handoff fails and the run ends `failed`. Otherwise it resyncs, records the person's actions as `human` events and continues.
+
+**Irreversible actions.** Discovery holds them to the same rule as replay: dispatched once, never repeated.
+- An irreversible action counts as dispatched once its target resolves, keyed by scope, role and name. A person's click on a profile commit control during a takeover counts too.
+- The model choosing an already-dispatched irreversible target is refused before any approval is asked (`policy.rule: "irreversible_once"`, decision `deny`), and told to continue from the screen as it is.
+- A dispatch error routes to an `unknown_outcome` takeover when there is an operator; the person checks the live session and gives a verdict. Without one, the run stops. Either way the trace ends `outcome_unknown`: what followed the commit was never observed.
+- A `restart_if_no_side_effects` recovery after a dispatch also ends `outcome_unknown`.
+
+**Trace end kinds:** `finish`, `need_human`, `give_up`, `stuck`, `budget`, `failed`, `aborted`, `outcome_unknown`. Only `finish` compiles.
 
 **Provider.** One interface, `decide(context) → Action`. `OpenRouterProvider` for real runs; `RecordedProvider` replays saved responses for tests and for running without a key.
 
@@ -336,7 +352,7 @@ type Common = {
   "result": { "status": "ok", "postObservation": "obs-4", "settleMs": 180 } }
 ```
 
-The trace header carries the request (input values masked by sensitivity), tenant, app version and model. The final event carries `finish` with the elements the model cites as evidence of success.
+The trace header carries the request (input values masked by sensitivity), tenant, app version and model. The final event carries `finish` with the elements the model cites as evidence of success. The event of an irreversible action also carries `readback`: every element on that screen equal to an input value (money compared as an amount), with tested candidates.
 
 ## 7. Compiler
 
@@ -349,6 +365,7 @@ The trace header carries the request (input values masked by sensitivity), tenan
 4. Template or reject locator text containing an input value.
 5. Deduplicate elements into named targets; order strategies by a fixed ranking (`role_name`, `anchor`, `table_cell` where it applies); keep only strategies that were unique at capture. Zero is a compile error; one is a warning.
 6. Derive `expect` per step and the checkpoint from finish evidence plus identity read-back.
+   - Before each irreversible step, emit an `assert` from that event's `readback`. Every request input must be checked, unless the request lists it in `readbackExempt`; otherwise compiling fails and names the missing inputs. One matching value is not enough: a commit that checks the member but not the amount can still move the wrong money. The compile report records `readbacks: { step, checked, exempt }[]`.
 7. Copy risk from the trace; compute `requires`; stamp provenance and content hash; set `draft`.
 8. Verification replay with `verifyInputs`. Not saved unless it returns `success`.
 9. Write the artifact and a compile report listing every review flag.
@@ -408,7 +425,7 @@ Human steps captured during a discovery takeover are compiled in, flagged, and k
 
 There is no tenant `irreversible` setting. A tenant that must never write sets `maxRisk` below `irreversible`; otherwise the irreversible gate in §5 applies to every tenant the same way.
 
-**Masks.** A rule names a visible label and where its value sits: `below` (a column under a header), `right_of` (a value beside a form label) or `self` (the label and value share one text element, such as the banner's "Operator: teller01"; the whole element is hidden). `when` limits a rule to one screen. Member numbers, names, account numbers, balances, deposits, the available balance, the override amount, the Supervisor ID and the operator ID are all masked in saved screenshots and observation dumps. Evidence is told apart by scenario folder and run id, and logs show identifiers as `***77`.
+**Masks.** A rule names a visible label and where its value sits: `below` (a column under a header, as wide as the header's own table cell when it has one, so a control further down the screen is not caught), `right_of` (a value beside a form label) or `self` (the label and value share one text element, such as the banner's "Operator: teller01"; the whole element is hidden). `when` limits a rule to one screen. Member numbers, names, account numbers, balances, deposits, the available balance, the override amount, the Supervisor ID and the operator ID are all masked in saved screenshots and observation dumps. Evidence is told apart by scenario folder and run id, and logs show identifiers as `***77`.
 
 Tenant overrides (secondary) patch named targets, condition signatures and timeouts only.
 
@@ -421,7 +438,9 @@ Checks, in order, for every action:
 2. Action type is allowed for this tenant.
 3. Target scope is allowed.
 4. Risk class is within `maxRisk`; an irreversible action has an approval.
-5. Execute through the surface; log the event with redaction applied.
+5. Resolve the target, waiting up to the timeout.
+6. Controller and epoch again. Resolution can wait, and control can change hands meanwhile; nothing is awaited between this check and the dispatch.
+7. Execute through the surface; log the event with redaction applied. An irreversible action is marked dispatched before the surface acts.
 
 Independent of these, the browser context blocks every request whose origin and path are not both on the tenant allowlist (`paths` entries are exact, or a prefix when they end in `*`). It fails closed, so the admin endpoints are blocked because they are not listed.
 
@@ -440,7 +459,7 @@ AUTOMATION_ACTIVE ──trigger──► PAUSING ──settled──► AWAITING
 ```
 
 - **Ownership.** `controller: automation | human | none` and an epoch incremented on every transfer. The guarded executor refuses any action planned under an older epoch.
-- **Triggers.** A condition with disposition `escalate`; an irreversible step needing approval; unknown outcome; discovery stuck.
+- **Triggers.** A condition with disposition `escalate`; an irreversible step needing approval; unknown outcome (replay, or a dispatch error on an irreversible action in discovery); discovery stuck.
 - **Pausing.** Control passes to `none`; automation waits until two observations in a row have the same fingerprint (at most `slowLoadMs`), then captures a masked screenshot.
 - **Intervention request.** `{ id, runId, kind: "approval" | "takeover" | "unknown_outcome", capability, stepId, intent, condition, reason, inputs (redacted by sensitivity), screenshot (masked), allowedResponses, epoch, createdAt }`, written to `runs/<runId>/interventions/<n>.json` and sent through an `InterventionChannel`. The channel asks one question at a time from a fixed list of answers; `TerminalChannel` prompts on stdin, and tests use a scripted channel.
 - **Approval.** Answers `approve` / `deny`. Control never passes to the human: it goes `none` and back to `automation`, so the pre-commit `assert` runs again before Confirm. `deny` is `failure: aborted_by_human`.

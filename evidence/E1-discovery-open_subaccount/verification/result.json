@@ -1,0 +1,26 @@
+{
+  "runId": "20261016T031530-7dcfd6a7",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "1.0.0",
+    "contentHash": "sha256:495231c83bf2aef84302e6e30b723cd29b31e6ac979b5c0e13cd8ebde9182b41"
+  },
+  "tenant": "lakeside",
+  "durationMs": 2232,
+  "stepsCompleted": 13,
+  "recoveries": [],
+  "interventions": [
+    {
+      "id": "20261016T031530-7dcfd6a7-i1",
+      "kind": "approval",
+      "resolution": "approve"
+    }
+  ],
+  "warnings": [],
+  "log": "runs\\20261016T031530-7dcfd6a7\\run.jsonl",
+  "status": "success",
+  "outputs": {
+    "newAccountNumber": "***03",
+    "confirmationRef": "OSA-0830-0628"
+  }
+}

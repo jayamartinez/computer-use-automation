@@ -13,8 +13,8 @@ import type { HandoffController } from "../handoff/controller.ts";
 import { redact } from "../evidence/redact.ts";
 import { parseOutput } from "../outcome/values.ts";
 import type { Condition, Profile, Tenant } from "../profile/schema.ts";
-import { maskedElements } from "../surface/resolve.ts";
-import type { HumanAction, Observation, ObservedElement } from "../surface/types.ts";
+import { maskedElements, moneyAmount, normalize } from "../surface/resolve.ts";
+import type { HumanAction, MaskRule, Observation, ObservedElement } from "../surface/types.ts";
 import type { Trace, TraceEvent } from "../trace/schema.ts";
 import {
   parseModelAction,
@@ -79,6 +79,8 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
   const outputsBound: Trace["outputs_bound"] = {};
   const recoveryAttempts = new Map<string, number>();
   const repeats = new Map<string, number>();
+  /** Irreversible actions already dispatched, by target: none is ever dispatched again. */
+  const committed = new Map<string, string>();
   let seq = 0;
   let decisions = 0;
   let badAnswers = 0;
@@ -201,7 +203,37 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
     if (taken.resolution !== "returned") {
       return stop({ kind: "aborted", reason: `Takeover ended as ${taken.resolution}: ${reason}` });
     }
-    for (const action of taken.actions) {
+    recordHuman(taken.actions, files);
+    // The person may have left the session anywhere. Automation takes it back only once the
+    // screen is re-read and is not still on a condition that needs a person or fails the run;
+    // until then the handoff stays in RESYNC and no approval or takeover could be raised.
+    const blocking = profile.conditions.filter((c) => c.disposition !== "recover");
+    const still = await executor.race(
+      blocking.map((c) => c.signature),
+      0,
+    );
+    handoff.resynced(still === undefined);
+    if (still) {
+      return stop({
+        kind: "failed",
+        reason: `Control came back but the screen still shows ${blocking[still.index]!.id}`,
+      });
+    }
+    note(
+      `A person took over and did: ${taken.actions.map((a) => `${a.kind} ${a.role} "${a.name}"`).join(", ") || "nothing recorded"}; then returned control.`,
+    );
+    repeats.clear();
+    badAnswers = 0;
+    return { kind: "continue" };
+  };
+
+  const recordHuman = (actions: HumanAction[], files: TraceEvent["observation"]): void => {
+    const commitControls = new Set(profile.risk.commitControls.map(normalize));
+    for (const action of actions) {
+      // A commit a person made counts as dispatched: the model must not make it again.
+      if (action.kind === "click" && commitControls.has(normalize(action.name))) {
+        committed.set(targetKey(action), "a person's takeover");
+      }
       record({
         actor: "human",
         observation: files,
@@ -215,12 +247,37 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
         result: { status: "ok" },
       });
     }
-    note(
-      `A person took over and did: ${taken.actions.map((a) => `${a.kind} ${a.role} "${a.name}"`).join(", ") || "nothing recorded"}; then returned control.`,
-    );
-    repeats.clear();
-    badAnswers = 0;
-    return { kind: "continue" };
+  };
+
+  /**
+   * An irreversible action was dispatched and its result cannot be established. As in replay,
+   * it is never repeated: a person, when there is one, checks the live session and says
+   * whether it committed. Either way discovery ends here, because what follows the commit was
+   * never observed and must not be compiled as if it were.
+   */
+  const unknownOutcome = async (
+    stepId: string,
+    intent: string,
+    observed: string,
+    files: TraceEvent["observation"],
+  ): Promise<Outcome> => {
+    if (!handoff) {
+      return stop({ kind: "outcome_unknown", reason: `${observed}; no operator to check it` });
+    }
+    const taken = await handoff.takeover("unknown_outcome", { stepId, intent, reason: observed });
+    if (taken.resolution !== "returned") {
+      return stop({
+        kind: "outcome_unknown",
+        reason: `${observed}; the check ended as ${taken.resolution}`,
+      });
+    }
+    recordHuman(taken.actions, files);
+    // Nothing more is automated in this run, so automation never takes the session back.
+    handoff.resynced(false);
+    return stop({
+      kind: "outcome_unknown",
+      reason: `${observed}; the operator's verdict: ${taken.answer}`,
+    });
   };
 
   const condition = async (
@@ -272,6 +329,13 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
           await executor.waitForAbsence(found.signature, profile.timeouts.slowLoadMs);
         }
         if (found.resume === "restart_if_no_side_effects") {
+          // As in replay: starting over is only safe when nothing can have been committed.
+          if (committed.size > 0) {
+            return stop({
+              kind: "outcome_unknown",
+              reason: `Condition ${found.id} requires a restart, but an irreversible action was already dispatched`,
+            });
+          }
           const login = await ensureAuthenticated(executor, profile, options.secrets);
           if (!login.ok) return stop({ kind: "failed", reason: login.reason });
         }
@@ -342,25 +406,34 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
           role: element.role,
           scope: element.scope,
           candidates: templateCandidates(
-            synthesizeCandidates(observation.elements, element, inputs),
+            synthesizeCandidates(observation.elements, element, inputs, profile.masks),
             inputs,
           ),
         },
       ];
     });
 
-  /** Texts on the final screen equal to an input value: the identity read-back for the checkpoint. */
-  const identityTargets = (observation: Observation) =>
+  /**
+   * Texts on a screen equal to an input value: the identity read-back for the checkpoint, and
+   * before an irreversible action the read-back of what will be committed. Money is compared as
+   * an amount, the way replay's `cellEquals` with `as: "money"` will check it.
+   */
+  const readbackTargets = (observation: Observation) =>
     Object.entries(inputs).flatMap(([input, value]) =>
       observation.elements
-        .filter((e) => e.role !== "text" && e.text.trim() === value)
+        .filter((e) => {
+          if (e.role === "text") return false;
+          if (request.inputs[input]?.type !== "money") return e.text.trim() === value;
+          const shown = moneyAmount(e.text);
+          return shown !== undefined && shown === moneyAmount(value);
+        })
         .map((element) => ({
           input,
           ref: element.ref,
           role: element.role,
           scope: element.scope,
           candidates: templateCandidates(
-            synthesizeCandidates(observation.elements, element, inputs),
+            synthesizeCandidates(observation.elements, element, inputs, profile.masks),
             inputs,
           ),
         }))
@@ -398,7 +471,12 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
       return invalid(`"${action.output}" is not a declared output`);
     }
 
-    const candidates: Candidate[] = synthesizeCandidates(observation.elements, element, inputs);
+    const candidates: Candidate[] = synthesizeCandidates(
+      observation.elements,
+      element,
+      inputs,
+      profile.masks,
+    );
     const target = targetFrom(element, candidates);
     // The trace never holds an input value: a locator keyed on one is recorded as its template.
     const targetInfo = {
@@ -423,6 +501,29 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
     }
 
     const risk = classifyRisk(profile.risk, action.action as ActionType, element);
+    const dispatchedAt =
+      risk.risk === "irreversible" ? committed.get(targetKey(element)) : undefined;
+    if (dispatchedAt !== undefined) {
+      // Checked before any approval is asked for: a person must never be invited to approve
+      // a second commit of something that may already have been committed.
+      record({
+        actor: "automation",
+        observation: files,
+        decision: action,
+        raw,
+        policy: { risk: risk.risk, rule: "irreversible_once", decision: "deny" },
+        target: targetInfo,
+        result: {
+          status: "denied",
+          message: `already dispatched at ${dispatchedAt}; an irreversible action is never repeated`,
+        },
+      });
+      note(
+        `#${seq} ${action.action} ${describe(element)}: refused, it was already done at ${dispatchedAt} and is never repeated; continue from the screen as it is`,
+      );
+      badAnswers += 1;
+      return { kind: "continue" };
+    }
     let approved = false;
     if (risk.needsApproval) {
       if (!handoff) {
@@ -509,6 +610,12 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
       ...(approved ? { approved } : {}),
       timeoutMs: ACTION_TIMEOUT_MS,
     });
+    // The executor counts an irreversible action as dispatched once it resolved the target, so
+    // from then on it may have committed whatever the result says.
+    const dispatched =
+      risk.risk === "irreversible" &&
+      (result.status === "done" || result.status === "dispatch_error");
+    if (dispatched) committed.set(targetKey(element), stepId);
     const policy = {
       risk: risk.risk,
       rule: risk.rule,
@@ -521,6 +628,9 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
       raw,
       policy,
       target: targetInfo,
+      // What the screen showed when the commit was approved: the compiler turns it into the
+      // pre-commit assert that must pass before this step on every replay.
+      ...(risk.risk === "irreversible" ? { readback: readbackTargets(observation) } : {}),
     };
 
     switch (result.status) {
@@ -543,6 +653,16 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
         return { kind: "continue" };
       case "dispatch_error":
         record({ ...base, result: { status: "error", message: result.message } });
+        if (dispatched) {
+          // An error while acting cannot prove nothing was committed; the model is not told
+          // "it failed", because it would try again.
+          return unknownOutcome(
+            stepId,
+            action.rationale,
+            `${action.action} on ${describe(element)} was dispatched and then failed (${result.message})`,
+            files,
+          );
+        }
         note(
           `#${seq} ${action.action} ${describe(element)}: the action failed (${result.message})`,
         );
@@ -624,7 +744,7 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
       kind: "finish",
       summary: action.summary,
       evidence: evidenceTargets(observation, action.evidenceRefs),
-      identity: identityTargets(observation),
+      identity: readbackTargets(observation),
     });
   };
 
@@ -664,13 +784,14 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
       continue;
     }
 
-    const screenshot = await executor.screenshot([]);
+    const view = withoutSecrets(observation, Object.values(options.secrets));
+    const screenshot = await executor.screenshot(view.masks);
     const raw = await provider.decide({
       system: SYSTEM,
-      user: prompt(observation),
+      user: prompt(view.observation),
       ...(screenshot ? { screenshot } : {}),
       tools,
-      observation,
+      observation: view.observation,
     });
     decisions += 1;
     cost += raw.usage?.cost ?? 0;
@@ -737,6 +858,44 @@ export async function discover(options: DiscoverOptions): Promise<Trace> {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export type { HumanAction };
+
+/** A control by what it is, not by ref or screen: the same button on any later screen. */
+function targetKey(e: { role: string; name: string; scope: string[] }): string {
+  return `${e.scope.join("/")}|${e.role}|${normalize(e.name)}`;
+}
+
+/**
+ * The screen as the model may see it. It sees member data (it has to read the screen, and what
+ * it says is scrubbed afterwards), but never a credential: the banner shows the operator ID on
+ * every screen. Texts holding a secret are hidden in the screenshot and replaced in the list.
+ */
+function withoutSecrets(
+  observation: Observation,
+  secrets: string[],
+): { observation: Observation; masks: MaskRule[] } {
+  const values = secrets.filter((value) => value.length > 0);
+  const hide = (text: string) => values.reduce((t, value) => t.replaceAll(value, "[secret]"), text);
+  const holds = (e: ObservedElement) =>
+    [e.text, e.name, e.value ?? ""].some((text) => values.some((value) => text.includes(value)));
+  return {
+    masks: observation.elements
+      .filter((e) => e.role === "text" && holds(e))
+      .map((e) => ({ label: e.text, where: "self" })),
+    observation: {
+      ...observation,
+      elements: observation.elements.map((e) =>
+        holds(e)
+          ? {
+              ...e,
+              text: hide(e.text),
+              name: hide(e.name),
+              ...(e.value === undefined ? {} : { value: hide(e.value) }),
+            }
+          : e,
+      ),
+    },
+  };
+}
 
 /** Free text the model wrote, with input values written as their templates. */
 function templateProse(action: ModelAction, inputs: Record<string, string>): ModelAction {

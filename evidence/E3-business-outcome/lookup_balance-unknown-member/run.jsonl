@@ -1,0 +1,13 @@
+{"seq":1,"ts":"2026-10-19T15:01:10.400Z","event":"run_start","runId":"20261019T150110-fc77ee1a","capability":"coreserv.member.lookup_balance","version":"1.1.0","contentHash":"sha256:45a860cf36313de3ef0b51e41e154b014f4e08264d413d17b8ce2e368f1340da","tenant":"lakeside","inputs":{"memberId":"***99"}}
+{"seq":2,"ts":"2026-10-19T15:01:10.444Z","event":"action","stepId":"login_1","intent":"Sign in (app profile)","action":"fill","target":"login.steps[0]","risk":"reversible","value":"{{secrets.operatorId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":20}
+{"seq":3,"ts":"2026-10-19T15:01:10.456Z","event":"action","stepId":"login_2","intent":"Sign in (app profile)","action":"fill","target":"login.steps[1]","risk":"reversible","value":"{{secrets.password}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":12}
+{"seq":4,"ts":"2026-10-19T15:01:10.516Z","event":"action","stepId":"login_3","intent":"Sign in (app profile)","action":"click","target":"login.steps[2]","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":60}
+{"seq":5,"ts":"2026-10-19T15:01:10.740Z","event":"action","stepId":"click_member_inquiry","intent":"Open Member Inquiry to look up member {{inputs.memberId}}.","action":"click","target":"member_inquiry_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":63}
+{"seq":6,"ts":"2026-10-19T15:01:10.897Z","event":"state","stepId":"click_member_inquiry","matched":"expected state","ms":157}
+{"seq":7,"ts":"2026-10-19T15:01:10.897Z","event":"step_ok","stepId":"click_member_inquiry"}
+{"seq":8,"ts":"2026-10-19T15:01:10.933Z","event":"action","stepId":"fill_member_number","intent":"Enter the member number to search.","action":"fill","target":"member_number_field","risk":"reversible","value":"{{inputs.memberId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":36}
+{"seq":9,"ts":"2026-10-19T15:01:10.954Z","event":"state","stepId":"fill_member_number","matched":"expected state","ms":21}
+{"seq":10,"ts":"2026-10-19T15:01:10.954Z","event":"step_ok","stepId":"fill_member_number"}
+{"seq":11,"ts":"2026-10-19T15:01:11.015Z","event":"action","stepId":"click_search","intent":"Member number is filled; run the search.","action":"click","target":"search_button","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":61}
+{"seq":12,"ts":"2026-10-19T15:01:11.158Z","event":"state","stepId":"click_search","matched":"outcome MEMBER_NOT_FOUND","ms":143}
+{"seq":13,"ts":"2026-10-19T15:01:11.158Z","event":"run_end","status":"business_outcome","outcome":{"code":"MEMBER_NOT_FOUND","atStep":"click_search"}}

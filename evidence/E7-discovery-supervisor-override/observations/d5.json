@@ -1,0 +1,921 @@
+{
+  "id": "f3ee19d3-f20f-402b-be5f-80f869c61f82",
+  "elements": [
+    {
+      "ref": "e1",
+      "scope": [
+        "banner"
+      ],
+      "role": "cell",
+      "name": "CoreServ 7.2 Lakeside CU",
+      "text": "CoreServ 7.2 Lakeside CU",
+      "bounds": {
+        "x": 8,
+        "y": 8,
+        "width": 778.703125,
+        "height": 19
+      }
+    },
+    {
+      "ref": "e2",
+      "scope": [
+        "banner"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 786.703125,
+        "y": 8,
+        "width": 485.296875,
+        "height": 19
+      }
+    },
+    {
+      "ref": "e3",
+      "scope": [
+        "banner"
+      ],
+      "role": "text",
+      "name": "Lakeside CU",
+      "text": "Lakeside CU",
+      "bounds": {
+        "x": 10,
+        "y": 10,
+        "width": 164.765625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e4",
+      "scope": [
+        "banner"
+      ],
+      "role": "text",
+      "name": "CoreServ 7.2",
+      "text": "CoreServ 7.2",
+      "bounds": {
+        "x": 10,
+        "y": 10,
+        "width": 79.5,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e5",
+      "scope": [
+        "banner"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 1168.828125,
+        "y": 10,
+        "width": 101.171875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e6",
+      "scope": [
+        "nav"
+      ],
+      "role": "link",
+      "name": "Main Menu",
+      "text": "Main Menu",
+      "bounds": {
+        "x": 12,
+        "y": 35,
+        "width": 64.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e7",
+      "scope": [
+        "nav"
+      ],
+      "role": "link",
+      "name": "Member Inquiry",
+      "text": "Member Inquiry",
+      "bounds": {
+        "x": 12,
+        "y": 58,
+        "width": 90.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e8",
+      "scope": [
+        "nav"
+      ],
+      "role": "cell",
+      "name": "Functions",
+      "text": "Functions",
+      "bounds": {
+        "x": 8,
+        "y": 8,
+        "width": 98.3125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e9",
+      "scope": [
+        "nav"
+      ],
+      "role": "cell",
+      "name": "Main Menu",
+      "text": "Main Menu",
+      "bounds": {
+        "x": 8,
+        "y": 31,
+        "width": 98.3125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e10",
+      "scope": [
+        "nav"
+      ],
+      "role": "cell",
+      "name": "Member Inquiry",
+      "text": "Member Inquiry",
+      "bounds": {
+        "x": 8,
+        "y": 54,
+        "width": 98.3125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e11",
+      "scope": [
+        "nav"
+      ],
+      "role": "text",
+      "name": "Functions",
+      "text": "Functions",
+      "bounds": {
+        "x": 12,
+        "y": 12,
+        "width": 62.109375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e12",
+      "scope": [
+        "nav"
+      ],
+      "role": "text",
+      "name": "Main Menu",
+      "text": "Main Menu",
+      "bounds": {
+        "x": 12,
+        "y": 35,
+        "width": 64.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e13",
+      "scope": [
+        "nav"
+      ],
+      "role": "text",
+      "name": "Member Inquiry",
+      "text": "Member Inquiry",
+      "bounds": {
+        "x": 12,
+        "y": 58,
+        "width": 90.3125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e14",
+      "scope": [
+        "workarea"
+      ],
+      "role": "button",
+      "name": "Open Sub-Account",
+      "text": "Open Sub-Account",
+      "bounds": {
+        "x": 20,
+        "y": 193,
+        "width": 128.640625,
+        "height": 21
+      }
+    },
+    {
+      "ref": "e15",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Member Profile",
+      "text": "Member Profile",
+      "bounds": {
+        "x": 8,
+        "y": 8,
+        "width": 1093,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e16",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 8,
+        "y": 31,
+        "width": 1093,
+        "height": 211
+      }
+    },
+    {
+      "ref": "e17",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 20,
+        "y": 43,
+        "width": 332.40625,
+        "height": 48
+      }
+    },
+    {
+      "ref": "e18",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Member No",
+      "text": "Member No",
+      "bounds": {
+        "x": 21,
+        "y": 44,
+        "width": 78.796875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e19",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 99.796875,
+        "y": 44,
+        "width": 106.984375,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e20",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Status",
+      "text": "Status",
+      "bounds": {
+        "x": 206.78125,
+        "y": 44,
+        "width": 52.796875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e21",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Active",
+      "text": "Active",
+      "bounds": {
+        "x": 259.578125,
+        "y": 44,
+        "width": 91.828125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e22",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Name",
+      "text": "Name",
+      "bounds": {
+        "x": 21,
+        "y": 67,
+        "width": 78.796875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e23",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 99.796875,
+        "y": 67,
+        "width": 106.984375,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e24",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Branch",
+      "text": "Branch",
+      "bounds": {
+        "x": 206.78125,
+        "y": 67,
+        "width": 52.796875,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e25",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Lakeside Main",
+      "text": "Lakeside Main",
+      "bounds": {
+        "x": 259.578125,
+        "y": 67,
+        "width": 91.828125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e26",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 20,
+        "y": 99,
+        "width": 332.40625,
+        "height": 86
+      }
+    },
+    {
+      "ref": "e27",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Account No",
+      "text": "Account No",
+      "bounds": {
+        "x": 21,
+        "y": 115,
+        "width": 96.203125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e28",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Type",
+      "text": "Type",
+      "bounds": {
+        "x": 117.203125,
+        "y": 115,
+        "width": 62.203125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e29",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Balance",
+      "text": "Balance",
+      "bounds": {
+        "x": 179.40625,
+        "y": 115,
+        "width": 73.078125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e30",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Opened",
+      "text": "Opened",
+      "bounds": {
+        "x": 252.484375,
+        "y": 115,
+        "width": 73.078125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e31",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 21,
+        "y": 138,
+        "width": 96.203125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e32",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Checking",
+      "text": "Checking",
+      "bounds": {
+        "x": 117.203125,
+        "y": 138,
+        "width": 62.203125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e33",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 179.40625,
+        "y": 138,
+        "width": 73.078125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e34",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "08/02/2016",
+      "text": "08/02/2016",
+      "bounds": {
+        "x": 252.484375,
+        "y": 138,
+        "width": 73.078125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e35",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 21,
+        "y": 161,
+        "width": 96.203125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e36",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "Savings",
+      "text": "Savings",
+      "bounds": {
+        "x": 117.203125,
+        "y": 161,
+        "width": 62.203125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e37",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 179.40625,
+        "y": 161,
+        "width": 73.078125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e38",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "08/02/2016",
+      "text": "08/02/2016",
+      "bounds": {
+        "x": 252.484375,
+        "y": 161,
+        "width": 73.078125,
+        "height": 23
+      }
+    },
+    {
+      "ref": "e39",
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "name": "",
+      "text": "",
+      "bounds": {
+        "x": 20,
+        "y": 193,
+        "width": 332.40625,
+        "height": 37
+      }
+    },
+    {
+      "ref": "e40",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Member Profile",
+      "text": "Member Profile",
+      "bounds": {
+        "x": 12,
+        "y": 12,
+        "width": 93.921875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e41",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Member No",
+      "text": "Member No",
+      "bounds": {
+        "x": 25,
+        "y": 48,
+        "width": 70.796875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e42",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 103.796875,
+        "y": 48,
+        "width": 36.15625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e43",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Status",
+      "text": "Status",
+      "bounds": {
+        "x": 210.78125,
+        "y": 48,
+        "width": 39.734375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e44",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Active",
+      "text": "Active",
+      "bounds": {
+        "x": 263.578125,
+        "y": 48,
+        "width": 35.40625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e45",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Name",
+      "text": "Name",
+      "bounds": {
+        "x": 25,
+        "y": 71,
+        "width": 35.421875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e46",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 103.796875,
+        "y": 71,
+        "width": 98.984375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e47",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Branch",
+      "text": "Branch",
+      "bounds": {
+        "x": 210.78125,
+        "y": 71,
+        "width": 44.796875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e48",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Lakeside Main",
+      "text": "Lakeside Main",
+      "bounds": {
+        "x": 263.578125,
+        "y": 71,
+        "width": 83.828125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e49",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Accounts",
+      "text": "Accounts",
+      "bounds": {
+        "x": 20,
+        "y": 99,
+        "width": 59.234375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e50",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Account No",
+      "text": "Account No",
+      "bounds": {
+        "x": 25,
+        "y": 119,
+        "width": 72.953125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e51",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Type",
+      "text": "Type",
+      "bounds": {
+        "x": 121.203125,
+        "y": 119,
+        "width": 29.390625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e52",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Balance",
+      "text": "Balance",
+      "bounds": {
+        "x": 183.40625,
+        "y": 119,
+        "width": 49.875,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e53",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Opened",
+      "text": "Opened",
+      "bounds": {
+        "x": 256.484375,
+        "y": 119,
+        "width": 48.40625,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e54",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 25,
+        "y": 142,
+        "width": 88.203125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e55",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Checking",
+      "text": "Checking",
+      "bounds": {
+        "x": 121.203125,
+        "y": 142,
+        "width": 54.203125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e56",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 190.640625,
+        "y": 142,
+        "width": 57.84375,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e57",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "08/02/2016",
+      "text": "08/02/2016",
+      "bounds": {
+        "x": 256.484375,
+        "y": 142,
+        "width": 65.078125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e58",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 25,
+        "y": 165,
+        "width": 88.203125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e59",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "Savings",
+      "text": "Savings",
+      "bounds": {
+        "x": 121.203125,
+        "y": 165,
+        "width": 46.25,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e60",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "[masked]",
+      "text": "[masked]",
+      "bounds": {
+        "x": 183.40625,
+        "y": 165,
+        "width": 65.078125,
+        "height": 15
+      }
+    },
+    {
+      "ref": "e61",
+      "scope": [
+        "workarea"
+      ],
+      "role": "text",
+      "name": "08/02/2016",
+      "text": "08/02/2016",
+      "bounds": {
+        "x": 256.484375,
+        "y": 165,
+        "width": 65.078125,
+        "height": 15
+      }
+    }
+  ],
+  "fingerprint": "376cbc6cee80cded"
+}

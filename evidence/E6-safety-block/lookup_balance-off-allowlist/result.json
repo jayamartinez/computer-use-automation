@@ -1,0 +1,30 @@
+{
+  "runId": "20261019T150126-00ba40be",
+  "capability": {
+    "id": "coreserv.member.lookup_balance",
+    "version": "1.1.0",
+    "contentHash": "sha256:45a860cf36313de3ef0b51e41e154b014f4e08264d413d17b8ce2e368f1340da"
+  },
+  "tenant": "lakeside",
+  "durationMs": 10242,
+  "stepsCompleted": 0,
+  "recoveries": [],
+  "interventions": [],
+  "warnings": [],
+  "log": "runs\\20261019T150126-00ba40be\\run.jsonl",
+  "status": "failure",
+  "failure": {
+    "category": "unexpected_state",
+    "stepId": "login",
+    "intent": "Sign in using the app profile",
+    "expected": "The authenticated shell",
+    "observed": "The authenticated screen did not appear after sign-in",
+    "sideEffects": "none",
+    "safeToRetry": true,
+    "outputsVerified": false,
+    "evidence": {
+      "screenshot": "runs\\20261019T150126-00ba40be\\screenshots\\login.png",
+      "observation": "runs\\20261019T150126-00ba40be\\observations\\login.json"
+    }
+  }
+}

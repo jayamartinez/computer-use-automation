@@ -157,7 +157,7 @@ function byTableCell(
 }
 
 /** "$1,234.50", "1234.5" and "1234.50" all read as "1234.50"; anything else is not money. */
-function moneyAmount(text: string): string | undefined {
+export function moneyAmount(text: string): string | undefined {
   const match = /^\$?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/.exec(normalize(text));
   if (!match) return undefined;
   return `${match[1]!.replaceAll(",", "")}.${(match[2] ?? "").padEnd(2, "0")}`;
@@ -203,9 +203,32 @@ export function matchesSignature(observation: Observation, signature: Signature)
 }
 
 /**
+ * The horizontal extent of a header's column: the narrowest cell around the header text, when
+ * there is one. A text's own width is narrower than its column, so the cells beneath would only
+ * overlap it, and so would anything else further down the screen that merely overlaps.
+ */
+function columnBand(elements: ObservedElement[], label: ObservedElement): Box | undefined {
+  let band: Box | undefined;
+  for (const e of elements) {
+    if (e.role !== "cell" || !sameScope(e.scope, label.scope) || !contains(e.bounds, label.bounds))
+      continue;
+    if (!band || e.bounds.width < band.width) band = e.bounds;
+  }
+  return band;
+}
+
+const withinX = (outer: Box, inner: Box): boolean =>
+  outer.x <= inner.x + EPSILON && right(outer) >= right(inner) - EPSILON;
+
+/**
  * Elements holding a sensitive value: everything in the column beneath a mask label, the
  * element immediately to its right, or (`self`) any text that begins with the label because the
  * value shares its element. Used for screenshots and, via maskObservation, for dumps.
+ *
+ * "The column" is the header cell's width when the header sits in a cell. Overlap with the
+ * header text alone reached past the table: the Open Sub-Account button and its layout cell sit
+ * under the Account No column, were masked as account numbers, and the button's name then
+ * joined discovery's scrub list and was erased from the trace.
  */
 export function maskedElements(elements: ObservedElement[], rules: MaskRule[]): ObservedElement[] {
   const masked = new Set<ObservedElement>();
@@ -224,9 +247,15 @@ export function maskedElements(elements: ObservedElement[], rules: MaskRule[]): 
       const peers = elements.filter(
         (e) => e !== label && sameScope(e.scope, label.scope) && !contains(e.bounds, l),
       );
+      const band = rule.where === "below" ? columnBand(elements, label) : undefined;
       const found =
         rule.where === "below"
-          ? peers.filter((e) => overlapsX(e.bounds, l) && e.bounds.y >= bottom(l) - EPSILON)
+          ? peers.filter(
+              (e) =>
+                overlapsX(e.bounds, l) &&
+                (!band || withinX(band, e.bounds)) &&
+                e.bounds.y >= bottom(l) - EPSILON,
+            )
           : nearest(
               peers.filter((e) => overlapsY(e.bounds, l) && e.bounds.x >= right(l) - EPSILON),
               (e) => e.bounds.x - right(l),

@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "id": "coreserv.member.lookup_balance",
+  "version": "1.1.0",
+  "status": "draft",
+  "contentHash": "sha256:45a860cf36313de3ef0b51e41e154b014f4e08264d413d17b8ce2e368f1340da",
+  "description": "Read a member's current savings balance.",
+  "app": {
+    "product": "coreserv",
+    "recordedVersion": "7.2",
+    "surface": "web"
+  },
+  "inputs": {
+    "memberId": {
+      "type": "string",
+      "sensitivity": "identifier",
+      "description": "Member number",
+      "pattern": "^\\d{5}$",
+      "example": "10042"
+    }
+  },
+  "outputs": {
+    "savingsBalance": {
+      "type": "money",
+      "sensitivity": "financial",
+      "description": "Current balance of the member's Savings account",
+      "currency": "USD",
+      "fromStep": "extract_savings_balance"
+    }
+  },
+  "targets": {
+    "member_inquiry_link": {
+      "scope": [
+        "nav"
+      ],
+      "role": "link",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "Member Inquiry"
+        },
+        {
+          "kind": "anchor",
+          "text": "Main Menu",
+          "relation": "below"
+        }
+      ],
+      "rationale": "A named link; the name is what an operator looks for."
+    },
+    "member_number_field": {
+      "scope": [
+        "workarea"
+      ],
+      "role": "textbox",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Member Number",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "The textbox has no accessible name; the visible label beside it is the stable handle."
+    },
+    "search_button": {
+      "scope": [
+        "workarea"
+      ],
+      "role": "button",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "Search"
+        }
+      ],
+      "rationale": "A named button; the name is what an operator looks for."
+    },
+    "view_link": {
+      "scope": [
+        "workarea"
+      ],
+      "role": "link",
+      "strategies": [
+        {
+          "kind": "role_name",
+          "name": "View"
+        },
+        {
+          "kind": "table_cell",
+          "headers": [
+            "Member No",
+            "Action"
+          ],
+          "row": {
+            "column": "Member No",
+            "equals": "{{inputs.memberId}}"
+          },
+          "column": "Action"
+        }
+      ],
+      "rationale": "A named link; the name is what an operator looks for."
+    },
+    "savings_balance_cell": {
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "table_cell",
+          "headers": [
+            "Type",
+            "Balance"
+          ],
+          "row": {
+            "column": "Type",
+            "equals": "Savings"
+          },
+          "column": "Balance"
+        }
+      ],
+      "rationale": "Addressed by header and row key, never by position."
+    },
+    "member_no_cell": {
+      "scope": [
+        "workarea"
+      ],
+      "role": "cell",
+      "strategies": [
+        {
+          "kind": "anchor",
+          "text": "Member No",
+          "relation": "right_of"
+        }
+      ],
+      "rationale": "Identity read-back: the screen shows which record was handled."
+    }
+  },
+  "steps": [
+    {
+      "id": "click_member_inquiry",
+      "intent": "Open Member Inquiry to look up member {{inputs.memberId}}.",
+      "risk": "read",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 0
+      },
+      "target": "member_inquiry_link",
+      "action": "click",
+      "expect": {
+        "resolvable": "member_number_field"
+      }
+    },
+    {
+      "id": "fill_member_number",
+      "intent": "Enter the member number to search.",
+      "risk": "reversible",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "member_number_field",
+      "action": "fill",
+      "value": "{{inputs.memberId}}",
+      "expect": {
+        "valueEquals": "{{inputs.memberId}}"
+      }
+    },
+    {
+      "id": "click_search",
+      "intent": "Member number is filled; run the search.",
+      "risk": "read",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 0
+      },
+      "target": "search_button",
+      "action": "click",
+      "expect": {
+        "resolvable": "view_link"
+      }
+    },
+    {
+      "id": "click_view",
+      "intent": "Open the member {{inputs.memberId}} record to find account balances.",
+      "risk": "read",
+      "timeoutMs": 10000,
+      "retry": {
+        "max": 0
+      },
+      "target": "view_link",
+      "action": "click",
+      "expect": {
+        "resolvable": "savings_balance_cell"
+      }
+    },
+    {
+      "id": "extract_savings_balance",
+      "intent": "Savings row balance for member {{inputs.memberId}} is [masked].",
+      "risk": "read",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1
+      },
+      "target": "savings_balance_cell",
+      "action": "extract",
+      "output": "savingsBalance"
+    }
+  ],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "afterSteps": [
+        "click_search"
+      ],
+      "signature": {
+        "textPresent": "No members match",
+        "scope": [
+          "workarea"
+        ]
+      }
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "afterSteps": [
+        "click_view"
+      ],
+      "signature": {
+        "textPresent": "Access restricted",
+        "scope": [
+          "workarea"
+        ]
+      }
+    }
+  ],
+  "conditions": "profile",
+  "checkpoint": {
+    "all": [
+      {
+        "cellEquals": {
+          "target": "member_no_cell",
+          "value": "{{inputs.memberId}}"
+        }
+      },
+      {
+        "outputParsed": "savingsBalance"
+      }
+    ]
+  },
+  "requires": {
+    "actions": [
+      "click",
+      "fill",
+      "extract"
+    ],
+    "maxRisk": "reversible",
+    "scopes": [
+      "nav",
+      "workarea"
+    ]
+  },
+  "provenance": {
+    "traceId": "20261015T225901-c845113e",
+    "model": "openrouter:anthropic/claude-haiku-5.5",
+    "discoveredAt": "2026-10-15T22:59:01.865Z",
+    "compilerVersion": "1",
+    "verifiedWith": "a second input set, different from discovery"
+  }
+}

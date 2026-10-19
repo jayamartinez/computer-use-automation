@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "coreserv.member.lookup_balance",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "status": "draft",
-  "contentHash": "sha256:e74e192d16fd9147fcf3ffa17ccd8d142d0afcee00b282c0bc3c778d4a1a9dfe",
+  "contentHash": "sha256:45a860cf36313de3ef0b51e41e154b014f4e08264d413d17b8ce2e368f1340da",
   "description": "Read a member's current savings balance.",
   "app": {
     "product": "coreserv",
@@ -206,7 +206,32 @@
       "output": "savingsBalance"
     }
   ],
-  "outcomes": [],
+  "outcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "afterSteps": [
+        "click_search"
+      ],
+      "signature": {
+        "textPresent": "No members match",
+        "scope": [
+          "workarea"
+        ]
+      }
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "afterSteps": [
+        "click_view"
+      ],
+      "signature": {
+        "textPresent": "Access restricted",
+        "scope": [
+          "workarea"
+        ]
+      }
+    }
+  ],
   "conditions": "profile",
   "checkpoint": {
     "all": [

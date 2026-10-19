@@ -1,0 +1,65 @@
+{"seq":1,"ts":"2026-10-16T04:12:19.816Z","event":"run_start","runId":"20261016T041219-3844c568","capability":"coreserv.member.open_subaccount","version":"1.1.0","contentHash":"sha256:5b75f0af1c229f7c4d1b8ddc4e9eae4272f7c7bdff41f7d23a2fbba7c0ca9d76","tenant":"lakeside","inputs":{"memberId":"***77","accountType":"Money Market","nickname":"Rainy Day","openingDeposit":"[financial]"}}
+{"seq":2,"ts":"2026-10-16T04:12:19.866Z","event":"action","stepId":"login_1","intent":"Sign in (app profile)","action":"fill","target":"login.steps[0]","risk":"reversible","value":"{{secrets.operatorId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":24}
+{"seq":3,"ts":"2026-10-16T04:12:19.895Z","event":"action","stepId":"login_2","intent":"Sign in (app profile)","action":"fill","target":"login.steps[1]","risk":"reversible","value":"{{secrets.password}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":28}
+{"seq":4,"ts":"2026-10-16T04:12:20.065Z","event":"action","stepId":"login_3","intent":"Sign in (app profile)","action":"click","target":"login.steps[2]","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":170}
+{"seq":5,"ts":"2026-10-16T04:12:20.319Z","event":"action","stepId":"click_member_inquiry","intent":"Need member inquiry to locate member {{inputs.memberId}} and open accounts.","action":"click","target":"member_inquiry_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":58}
+{"seq":6,"ts":"2026-10-16T04:12:20.482Z","event":"state","stepId":"click_member_inquiry","matched":"expected state","ms":162}
+{"seq":7,"ts":"2026-10-16T04:12:20.482Z","event":"step_ok","stepId":"click_member_inquiry"}
+{"seq":8,"ts":"2026-10-16T04:12:20.516Z","event":"action","stepId":"fill_member_number","intent":"Enter the member number to search for the member.","action":"fill","target":"member_number_field","risk":"reversible","value":"{{inputs.memberId}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":34}
+{"seq":9,"ts":"2026-10-16T04:12:20.536Z","event":"state","stepId":"fill_member_number","matched":"expected state","ms":20}
+{"seq":10,"ts":"2026-10-16T04:12:20.537Z","event":"step_ok","stepId":"fill_member_number"}
+{"seq":11,"ts":"2026-10-16T04:12:20.574Z","event":"action","stepId":"click_search","intent":"Search for member {{inputs.memberId}} to open their record.","action":"click","target":"search_button","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":37}
+{"seq":12,"ts":"2026-10-16T04:12:20.725Z","event":"state","stepId":"click_search","matched":"expected state","ms":151}
+{"seq":13,"ts":"2026-10-16T04:12:20.725Z","event":"step_ok","stepId":"click_search"}
+{"seq":14,"ts":"2026-10-16T04:12:20.765Z","event":"action","stepId":"click_view","intent":"Open the member record for member {{inputs.memberId}} to find account opening options.","action":"click","target":"view_link","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":40}
+{"seq":15,"ts":"2026-10-16T04:12:20.912Z","event":"state","stepId":"click_view","matched":"expected state","ms":147}
+{"seq":16,"ts":"2026-10-16T04:12:20.912Z","event":"step_ok","stepId":"click_view"}
+{"seq":17,"ts":"2026-10-16T04:12:20.951Z","event":"action","stepId":"click_open_sub_account","intent":"Member profile for {{inputs.memberId}} is shown; open the sub-account form.","action":"click","target":"open_sub_account_button","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":38}
+{"seq":18,"ts":"2026-10-16T04:12:21.101Z","event":"state","stepId":"click_open_sub_account","matched":"expected state","ms":150}
+{"seq":19,"ts":"2026-10-16T04:12:21.101Z","event":"step_ok","stepId":"click_open_sub_account"}
+{"seq":20,"ts":"2026-10-16T04:12:21.130Z","event":"action","stepId":"fill_nickname","intent":"Enter the nickname for the new sub-account.","action":"fill","target":"nickname_field","risk":"reversible","value":"{{inputs.nickname}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":29}
+{"seq":21,"ts":"2026-10-16T04:12:21.152Z","event":"state","stepId":"fill_nickname","matched":"expected state","ms":22}
+{"seq":22,"ts":"2026-10-16T04:12:21.152Z","event":"step_ok","stepId":"fill_nickname"}
+{"seq":23,"ts":"2026-10-16T04:12:21.178Z","event":"action","stepId":"fill_opening_deposit","intent":"Enter the opening deposit amount.","action":"fill","target":"opening_deposit_field","risk":"reversible","value":"{{inputs.openingDeposit}}","policy":"fill:reversible","strategy":"anchor","strategyIndex":0,"ms":25}
+{"seq":24,"ts":"2026-10-16T04:12:21.200Z","event":"state","stepId":"fill_opening_deposit","matched":"expected state","ms":21}
+{"seq":25,"ts":"2026-10-16T04:12:21.200Z","event":"step_ok","stepId":"fill_opening_deposit"}
+{"seq":26,"ts":"2026-10-16T04:12:21.226Z","event":"action","stepId":"select_account_type","intent":"Set the required Account Type to {{inputs.accountType}} before continuing.","action":"select","target":"account_type_select","risk":"reversible","value":"{{inputs.accountType}}","policy":"select:reversible","strategy":"anchor","strategyIndex":0,"ms":26}
+{"seq":27,"ts":"2026-10-16T04:12:21.247Z","event":"state","stepId":"select_account_type","matched":"expected state","ms":21}
+{"seq":28,"ts":"2026-10-16T04:12:21.247Z","event":"step_ok","stepId":"select_account_type"}
+{"seq":29,"ts":"2026-10-16T04:12:21.280Z","event":"action","stepId":"click_continue","intent":"Form is filled correctly ({{inputs.accountType}}, {{inputs.nickname}}, {{inputs.openingDeposit}}, Savings); submit to proceed.","action":"click","target":"continue_button","risk":"read","policy":"click:read","strategy":"role_name","strategyIndex":0,"ms":33}
+{"seq":30,"ts":"2026-10-16T04:12:21.428Z","event":"state","stepId":"click_continue","matched":"condition supervisor_override","ms":147}
+{"seq":31,"ts":"2026-10-16T04:12:21.429Z","event":"condition","stepId":"click_continue","condition":"supervisor_override","disposition":"escalate"}
+{"seq":32,"ts":"2026-10-16T04:12:21.429Z","event":"handoff_state","from":"AUTOMATION_ACTIVE","to":"PAUSING","controller":"none","epoch":1}
+{"seq":33,"ts":"2026-10-16T04:12:21.684Z","event":"intervention_request","id":"20261016T041219-3844c568-i1","kind":"takeover","stepId":"click_continue","condition":"supervisor_override","reason":"Condition supervisor_override needs a person","epoch":1}
+{"seq":34,"ts":"2026-10-16T04:12:21.684Z","event":"handoff_state","from":"PAUSING","to":"AWAITING_HUMAN","controller":"none","epoch":1}
+{"seq":35,"ts":"2026-10-16T04:12:26.724Z","event":"handoff_state","from":"AWAITING_HUMAN","to":"HUMAN_ACTIVE","controller":"human","epoch":2}
+{"seq":36,"ts":"2026-10-16T04:12:35.231Z","event":"human_action","intervention":"20261016T041219-3844c568-i1","epoch":2,"kind":"click","role":"textbox","name":"Supervisor ID","scope":["workarea"]}
+{"seq":37,"ts":"2026-10-16T04:14:51.900Z","event":"human_action","intervention":"20261016T041219-3844c568-i1","epoch":2,"kind":"change","role":"textbox","name":"Supervisor ID","scope":["workarea"]}
+{"seq":38,"ts":"2026-10-16T04:14:51.993Z","event":"human_action","intervention":"20261016T041219-3844c568-i1","epoch":2,"kind":"click","role":"textbox","name":"Override Code","scope":["workarea"]}
+{"seq":39,"ts":"2026-10-16T04:14:52.521Z","event":"human_action","intervention":"20261016T041219-3844c568-i1","epoch":2,"kind":"change","role":"textbox","name":"Override Code","scope":["workarea"]}
+{"seq":40,"ts":"2026-10-16T04:14:52.589Z","event":"human_action","intervention":"20261016T041219-3844c568-i1","epoch":2,"kind":"click","role":"button","name":"Authorize","scope":["workarea"]}
+{"seq":41,"ts":"2026-10-16T04:15:01.620Z","event":"intervention_resolved","id":"20261016T041219-3844c568-i1","resolution":"returned"}
+{"seq":42,"ts":"2026-10-16T04:15:01.620Z","event":"handoff_state","from":"HUMAN_ACTIVE","to":"RESYNC","controller":"automation","epoch":3}
+{"seq":43,"ts":"2026-10-16T04:15:01.620Z","event":"resync","stepId":"click_continue","condition":"supervisor_override"}
+{"seq":44,"ts":"2026-10-16T04:15:01.653Z","event":"state","stepId":"click_continue","matched":"expected state","ms":33}
+{"seq":45,"ts":"2026-10-16T04:15:01.654Z","event":"handoff_state","from":"RESYNC","to":"AUTOMATION_ACTIVE","controller":"automation","epoch":3}
+{"seq":46,"ts":"2026-10-16T04:15:01.654Z","event":"step_ok","stepId":"click_continue"}
+{"seq":47,"ts":"2026-10-16T04:15:01.679Z","event":"state","stepId":"assert_before_click_confirm","matched":"expected state","ms":25}
+{"seq":48,"ts":"2026-10-16T04:15:01.679Z","event":"step_ok","stepId":"assert_before_click_confirm"}
+{"seq":49,"ts":"2026-10-16T04:15:01.679Z","event":"handoff_state","from":"AUTOMATION_ACTIVE","to":"PAUSING","controller":"none","epoch":4}
+{"seq":50,"ts":"2026-10-16T04:15:01.950Z","event":"intervention_request","id":"20261016T041219-3844c568-i2","kind":"approval","stepId":"click_confirm","reason":"The caller did not allow irreversible steps to run unattended","epoch":4}
+{"seq":51,"ts":"2026-10-16T04:15:01.950Z","event":"handoff_state","from":"PAUSING","to":"AWAITING_HUMAN","controller":"none","epoch":4}
+{"seq":52,"ts":"2026-10-16T04:15:13.996Z","event":"intervention_resolved","id":"20261016T041219-3844c568-i2","resolution":"approve"}
+{"seq":53,"ts":"2026-10-16T04:15:13.996Z","event":"handoff_state","from":"AWAITING_HUMAN","to":"AUTOMATION_ACTIVE","controller":"automation","epoch":5}
+{"seq":54,"ts":"2026-10-16T04:15:13.996Z","event":"reassert","stepId":"click_confirm","assertStep":"assert_before_click_confirm"}
+{"seq":55,"ts":"2026-10-16T04:15:14.021Z","event":"state","stepId":"assert_before_click_confirm","matched":"expected state","ms":25}
+{"seq":56,"ts":"2026-10-16T04:15:14.045Z","event":"dispatch_irreversible","stepId":"click_confirm","intent":"Review details match all declared inputs, so confirm the sub-account opening.","action":"click","target":"confirm_button","risk":"irreversible","epoch":5}
+{"seq":57,"ts":"2026-10-16T04:15:14.062Z","event":"action","stepId":"click_confirm","intent":"Review details match all declared inputs, so confirm the sub-account opening.","action":"click","target":"confirm_button","risk":"irreversible","policy":"click:irreversible","strategy":"role_name","strategyIndex":0,"ms":40}
+{"seq":58,"ts":"2026-10-16T04:15:14.222Z","event":"state","stepId":"click_confirm","matched":"expected state","ms":159}
+{"seq":59,"ts":"2026-10-16T04:15:14.223Z","event":"step_ok","stepId":"click_confirm"}
+{"seq":60,"ts":"2026-10-16T04:15:14.245Z","event":"action","stepId":"extract_new_account_no","intent":"Read the new account number from the confirmation receipt.","action":"extract","target":"new_account_no_cell","risk":"read","policy":"extract:read","strategy":"anchor","strategyIndex":0,"ms":22}
+{"seq":61,"ts":"2026-10-16T04:15:14.245Z","event":"step_ok","stepId":"extract_new_account_no"}
+{"seq":62,"ts":"2026-10-16T04:15:14.269Z","event":"action","stepId":"extract_confirmation_ref","intent":"Read the confirmation reference from the receipt; account number already extracted.","action":"extract","target":"confirmation_ref_cell","risk":"read","policy":"extract:read","strategy":"anchor","strategyIndex":0,"ms":23}
+{"seq":63,"ts":"2026-10-16T04:15:14.269Z","event":"step_ok","stepId":"extract_confirmation_ref"}
+{"seq":64,"ts":"2026-10-16T04:15:14.368Z","event":"checkpoint_ok"}
+{"seq":65,"ts":"2026-10-16T04:15:14.368Z","event":"run_end","status":"success","outputs":{"newAccountNumber":"***03","confirmationRef":"OSA-4288-5280"}}

@@ -1,0 +1,25 @@
+{
+  "id": "20261016T031437-659505f6-i1",
+  "runId": "20261016T031437-659505f6",
+  "kind": "approval",
+  "capability": {
+    "id": "coreserv.member.open_subaccount",
+    "version": "discovery"
+  },
+  "stepId": "d10",
+  "intent": "Review details match all declared inputs, so confirm the sub-account opening.",
+  "reason": "\"Confirm\" is a commit control (irreversible)",
+  "inputs": {
+    "memberId": "***42",
+    "accountType": "{{inputs.accountType}}",
+    "nickname": "{{inputs.nickname}}",
+    "openingDeposit": "[financial]"
+  },
+  "screenshot": "runs\\20261016T031437-659505f6\\interventions\\1.png",
+  "allowedResponses": [
+    "approve",
+    "deny"
+  ],
+  "epoch": 1,
+  "createdAt": "2026-10-16T03:15:01.228Z"
+}

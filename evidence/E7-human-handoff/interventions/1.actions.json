@@ -1,0 +1,42 @@
+[
+  {
+    "kind": "click",
+    "role": "textbox",
+    "name": "Supervisor ID",
+    "scope": [
+      "workarea"
+    ]
+  },
+  {
+    "kind": "change",
+    "role": "textbox",
+    "name": "Supervisor ID",
+    "scope": [
+      "workarea"
+    ]
+  },
+  {
+    "kind": "click",
+    "role": "textbox",
+    "name": "Override Code",
+    "scope": [
+      "workarea"
+    ]
+  },
+  {
+    "kind": "change",
+    "role": "textbox",
+    "name": "Override Code",
+    "scope": [
+      "workarea"
+    ]
+  },
+  {
+    "kind": "click",
+    "role": "button",
+    "name": "Authorize",
+    "scope": [
+      "workarea"
+    ]
+  }
+]

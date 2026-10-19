@@ -1,0 +1,19 @@
+{
+  "runId": "20261015T230207-0746dde8",
+  "capability": {
+    "id": "coreserv.member.lookup_balance",
+    "version": "1.0.0",
+    "contentHash": "sha256:e2f394d84944c25444624ef6d4dc629625da3efa258b6e6fd06d3570de4a0733"
+  },
+  "tenant": "lakeside",
+  "durationMs": 948,
+  "stepsCompleted": 5,
+  "recoveries": [],
+  "interventions": [],
+  "warnings": [],
+  "log": "runs\\20261015T230207-0746dde8\\run.jsonl",
+  "status": "success",
+  "outputs": {
+    "savingsBalance": "[financial]"
+  }
+}
